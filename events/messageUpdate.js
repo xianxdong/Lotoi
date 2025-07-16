@@ -12,7 +12,8 @@ module.exports = {
             )
             .setAuthor({name: newMessage.author.username, iconURL: newMessage.author.avatarURL()})
             .setColor(0x0099FF)
-            .setFooter({text:`User ID: ${newMessage.author.id}`});
+            .setFooter({text:`User ID: ${newMessage.author.id}`})
+            .setTimestamp();
         const logChannel = await client.channels.fetch('1390744469233729668');
         try {
             if (oldMessage.content != null){

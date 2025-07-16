@@ -3,15 +3,11 @@ const fs = require("node:fs")
 const path = require("node:path")
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
 const { token } = require('./config.json');
+const { AudioPlayer, getVoiceConnection } = require("@discordjs/voice")
 
 // Create a new client instance
 const client = new Client({ 
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-		GatewayIntentBits.GuildMembers
-	],
+	intents: 131071,
 	partials: [Partials.Message],
 
 });
@@ -45,6 +41,8 @@ for (const file of eventFiles) {
 		client.on(event.name, (...args) => event.execute(...args, client));
 	}
 }
+
+// const player = new AudioPlayer()
 
 
 

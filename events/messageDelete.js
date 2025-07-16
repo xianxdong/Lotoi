@@ -17,11 +17,12 @@ module.exports = {
             )
             .setAuthor({name: message.author.username, iconURL: message.author.avatarURL()})
             .setColor([219, 43, 31])
-            .setFooter({text:`Author: ${message.author.id} | Message ID: ${message.id}`});
+            .setFooter({text:`Author: ${message.author.id} | Message ID: ${message.id}`})
+            .setTimestamp();
 
         const logChannel = await client.channels.fetch("1390744469233729668");
         try {
-            if (message.content != null){
+            if (message.content != null && message.author.id != "823992654425620575"){
                 await logChannel.send({embeds: [embed]});
             }
             // console.log(message);
