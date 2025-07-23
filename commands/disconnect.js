@@ -19,7 +19,7 @@ module.exports = {
         try {
             await interaction.deferReply();
             const connection = getVoiceConnection(interaction.guild.id);
-            connection.destroy();
+            connection.disconnect()
             await interaction.editReply({embeds: [embed]});
 
         } catch (error){

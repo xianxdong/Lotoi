@@ -37,24 +37,24 @@ module.exports = {
 
             embed.setFields({name: "", value: "Successfully connected to VC"}).setColor(config.green);
             await interaction.editReply({embeds: [embed]});
-
+            
             connection.on('stateChange', (oldState, newState) => {
-	            console.log(`Connection transitioned from ${oldState.status} to ${newState.status}`);
+	            console.log(`Connection in ${interaction.guild.name} transitioned from ${oldState.status} to ${newState.status}`);
             });
 
             connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
             try {
                 await Promise.race([
-                    entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
-                    entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+                    entersState(connection, VoiceConnectionStatus.Signalling, 1_000),
+                    entersState(connection, VoiceConnectionStatus.Connecting, 1_000),
                 ]);
                 // Seems to be reconnecting to a new channel - ignore disconnect
             } catch {
                 // Seems to be a real disconnect which SHOULDN'T be recovered from
                 connection.destroy();
+                
             }
         });
-
 
         } catch (error){
             console.error(error)

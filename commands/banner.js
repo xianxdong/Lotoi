@@ -1,5 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
-const play = require('play-dl');
+const youtubedl = require('youtube-dl-exec')
+const fs = require("node:fs")
+
 
 
 module.exports = {
@@ -14,11 +16,6 @@ module.exports = {
         ),
     async execute(interaction){
 
-        const stream = await play.stream('https://www.youtube.com/watch?v=ZRtdQ81jPUQ');
-
-        console.log(stream)
-
-
         try {
             await interaction.deferReply();
             const targetUser = await interaction.options.getUser("user").fetch(true);
@@ -30,5 +27,7 @@ module.exports = {
         } catch (error){
             console.error(error);
         };
+
+
     }
 };

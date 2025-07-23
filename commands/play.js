@@ -1,32 +1,45 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags, VoiceConnectionStates } = require("discord.js");
-const { createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType, getVoiceConnection } = require('@discordjs/voice');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { createAudioPlayer, NoSubscriberBehavior, createAudioResource, StreamType, getVoiceConnection, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
 const config = require("../config")
+const youtubedl = require("youtube-dl-exec");
+const MusicQueue = require("../music/MusicQueue");
+const queueManager = require("../music/queueManager")
+const { InvalidLinkError, EmptyQueueList } = require("../music/errors")
 
 module.exports = {
 
     data: new SlashCommandBuilder()
         .setName("play")
-        .setDescription("Plays music in a voice channel"),
+        .setDescription("Plays music in a voice channel")
+        .addStringOption(option =>
+            option
+            .setName("url")
+            .setDescription("Paste in the youtube music URL")
+            .setRequired(true)
+        ),
 
     async execute(interaction){
+        await interaction.deferReply()
+        const urlLink = interaction.options.getString("url")
 
-        const player = createAudioPlayer({behaviors : {noSubscriber: NoSubscriberBehavior.Pause}});
-        const audioResource = createAudioResource("C:/Users/Xiang/Desktop/Projects/discord bot/Proi Proi.mp3", {inputType: StreamType.Arbitrary})
-        const connection = getVoiceConnection(interaction.guild.id);
 
-        connection.subscribe(player)
-        player.play(audioResource)
+        let queue = queueManager.get(interaction.guild.id)
+        if (!queue){
+            queue = new MusicQueue(interaction.guild.id, interaction);
+            queueManager.set(interaction.guild.id, queue)
+        }
+
+        // console.log(queue)
+        const musicSuccess = queue.addSong(urlLink, interaction);
+
+        if (!musicSuccess){
+            await interaction.editReply({content: "Invalid link."})
+            return;
+        }
+        
         
 
-        player.on('stateChange', (oldState, newState) => {
-            console.log(`Audio player transitioned from ${oldState.status} to ${newState.status}`);
-        });
-
-        connection.on(VoiceConnectionStates.Disconnected, () =>{
-            console.log("Bot has disconnected. Destorying audioplayer")
-            player.stop()
-        })
-
-    }   
-
+        await interaction.editReply("Testing!")
+        
+    }
 }
