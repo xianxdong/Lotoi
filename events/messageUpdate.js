@@ -17,7 +17,7 @@ module.exports = {
         const logChannel = await client.channels.fetch('1390744469233729668');
         try {
             if (oldMessage.content != null){
-                if (oldMessage.author.id != 823992654425620575 && newMessage.author.id != 823992654425620575){
+                if (oldMessage.author.id != 823992654425620575 && newMessage.author.id != 823992654425620575 && newMessage.author.bot != true){
                     await logChannel.send({embeds: [embed]});
                 }
             }

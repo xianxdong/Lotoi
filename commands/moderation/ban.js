@@ -1,31 +1,31 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits} = require("discord.js");
-const config = require("../config.json");
+const config = require("../../config.json");
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName("kick")
-        .setDescription("kick the user from the server")
+        .setName("ban")
+        .setDescription("ban the user from the server")
         .addUserOption(option => 
             option
             .setName("user")
-            .setDescription("kick the selected user")
+            .setDescription("ban the selected user")
             .setRequired(true))
         .addStringOption(option =>
             option
             .setName("reason")
-            .setDescription("The reason for the kick")
+            .setDescription("The reason for the ban")
         ),
     async execute(interaction){
         const targetMember = interaction.options.getMember("user");
-        const kickReason = interaction.options.getString("reason") ?? "No reason provided.";
+        const banReason = interaction.options.getString("reason") ?? "No reason provided.";
         const botInfo = await interaction.guild.members.fetch(config.clientId);
         const embed = new EmbedBuilder()
             .setColor(config.red)
-            .setFields({name: " ", value: `I can't kick that member`})
+            .setFields({name: " ", value: `I can't ban that member`})
             .setTimestamp();
 
-        if (!(interaction.member.permissions.has(PermissionFlagsBits.Administrator)) && !(interaction.member.permissions.has(PermissionFlagsBits.KickMembers))){
-            embed.setFields({name: " ", value: `Missing permissions: kick_members`});
+        if (!(interaction.member.permissions.has(PermissionFlagsBits.Administrator)) || !(interaction.member.permissions.has(PermissionFlagsBits.BanMembers))){
+            embed.setFields({name: " ", value: `Missing permissions: ban_members`});
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
 
@@ -35,10 +35,10 @@ module.exports = {
             return;
 
         } else if (targetMember.roles.highest.position >= interaction.member.roles.highest.position && interaction.member.id != interaction.guild.ownerId){
-            embed.setFields({name: " ", value: `You can't kick someone higher than yourself`});
+            embed.setFields({name: " ", value: `You can't ban someone higher than yourself`});
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             return;
-
+        
         } else if (targetMember.id === botInfo.id || targetMember.id === interaction.guild.ownerId || targetMember.roles.highest.position >= botInfo.roles.highest.position){
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
             return;
@@ -46,8 +46,8 @@ module.exports = {
         }
         try {
             await interaction.deferReply();
-            await interaction.guild.members.kick(targetMember.id, kickReason);
-            embed.setFields({name: " ", value: `***${targetMember.user.username} has been kicked.*** | ${kickReason}`}).setColor(config.green);
+            embed.setFields({name: " ", value: `***${targetMember.user.username} has been banned.*** | ${banReason}`}).setColor(config.green);
+            await interaction.guild.members.ban(targetMember.id, {reason: `${banReason}`});
             await interaction.editReply({ embeds: [embed]});
             
         } catch (error) {

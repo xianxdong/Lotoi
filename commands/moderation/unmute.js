@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits, ThreadAutoArchiveDuration, flatten } = require("discord.js");
 const ms = require("ms");
-const config = require("../config");
+const config = require("../../config");
 
 
 module.exports = {

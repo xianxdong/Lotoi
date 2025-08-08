@@ -1,8 +1,4 @@
 const { SlashCommandBuilder } = require("discord.js");
-const youtubedl = require('youtube-dl-exec')
-const fs = require("node:fs")
-
-
 
 module.exports = {
     data: new SlashCommandBuilder()

@@ -47,10 +47,6 @@ class Song {
         };
     };
 
-    async createEmbed(){
-        
-    }
-
     async createAudioResource(){
         try {
         const { createAudioResource, StreamType } = require("@discordjs/voice");
