@@ -2,6 +2,7 @@ const youtubedl = require("youtube-dl-exec");
 const { LinkNotFound } = require("./errors");
 const { normalizeYtdlpOutput } = require("./ytdlp-output-helper");
 const { pickBestAudioFormat } = require("./bestAudioFormatHelper");
+const fs = require('fs');
 
 // Pick yt-dlp path depending on OS
 let ytDlpPath;
@@ -10,7 +11,7 @@ if (process.platform === "win32") {
 	ytDlpPath = "yt-dlp";
 } else {
 	// On Linux server, use the specific installed binary path
-	ytDlpPath = "/usr/local/bin/yt-dlp";
+	ytDlpPath = process.env.YTDLP_PATH || "yt-dlp";
 }
 
 const ytdlp = youtubedl.create(ytDlpPath);
@@ -29,15 +30,25 @@ class Song {
 
 	async loadMetadata() {
 		try {
-			const ytOutput = await ytdlp(this.songUrl, {
-                dumpSingleJson: true,
-                noWarnings: true,
-                preferFreeFormats: true,
-                format: "251/bestaudio[acodec=opus]/bestaudio/best",
-                ...(process.platform !== "win32" && { 'cookies-from-browser': 'chromium' })
-            });
 
-			
+			function cookieOpts() {
+				const file = process.env.COOKIE_FILE; // set this ONLY on Railway
+				if (!file) return {};
+				try {
+					const { size } = fs.statSync(file);
+					if (size > 0) return { cookies: file };
+				} catch (_) {}
+					return {}; // file missing/empty → skip cookies
+				}
+				
+				const ytOutput = await ytdlp(this.songUrl, {
+					dumpSingleJson: true,
+					noWarnings: true,
+					preferFreeFormats: true,
+					format: "251/bestaudio[acodec=opus]/bestaudio/best",
+					...cookieOpts(),               // ← only included on Railway
+			});
+
             const jsonText = normalizeYtdlpOutput(ytOutput)
 			const info = JSON.parse(jsonText);
 			if (!info) throw new LinkNotFound("Error! Couldn't process and gather music data. Is the link valid?");
