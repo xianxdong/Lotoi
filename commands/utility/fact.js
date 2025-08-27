@@ -13,9 +13,7 @@ module.exports = {
         try {
 
             const response = await axios.get('https://catfact.ninja/fact');
-            console.log(response)
             const data = await response.data
-            // console.log(data)
 
             await interaction.editReply(`Cat Fact: ${data.fact}`);
 

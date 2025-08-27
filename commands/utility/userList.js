@@ -9,11 +9,9 @@ module.exports = {
     async execute(interaction){
         const members = await interaction.guild.members.fetch();
         const membersIDS = Array.from(members.keys());
-        // let memberIdList = []
         let memberNameList = []
         for (i = 0; i < membersIDS.length; i++){
             const memberNames = await interaction.guild.members.fetch(membersIDS[i]);
-            // memberIdList.push(membersIDS[i]);
             memberNameList.push(memberNames.user.username.toLowerCase());
         };
         memberNameList.sort()
