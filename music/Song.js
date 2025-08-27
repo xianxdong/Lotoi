@@ -1,69 +1,101 @@
-const youtubedl = require("youtube-dl-exec")
-const { LinkNotFound } = require("./errors")
+const youtubedl = require("youtube-dl-exec");
+const { LinkNotFound } = require("./errors");
+const { normalizeYtdlpOutput } = require("./ytdlp-output-helper");
+const { pickBestAudioFormat } = require("./bestAudioFormatHelper");
+
+// Pick yt-dlp path depending on OS
+let ytDlpPath;
+if (process.platform === "win32") {
+	// On Windows, just let it find yt-dlp in PATH (npm-installed or manually placed)
+	ytDlpPath = "yt-dlp";
+} else {
+	// On Linux server, use the specific installed binary path
+	ytDlpPath = "/usr/local/bin/yt-dlp";
+}
+
+const ytdlp = youtubedl.create(ytDlpPath);
 
 class Song {
-    constructor(songUrl, interaction){
-        this.songUrl = songUrl;
-        this.interaction = interaction;
-        this.requestedBy = this.interaction.user.username;
-        this.title = "";
-        this.streamURL = "";
-        this.thumbnail = "";
-        this.duration = 0;
-    }
+	constructor(songUrl, interaction) {
+		this.songUrl = songUrl;
+		this.interaction = interaction;
+		this.requestedBy = this.interaction.user.username;
+		this.title = "";
+		this.streamURL = "";
+		this.thumbnail = "";
+		this.duration = 0;
+		this.isOpusWebm = false; // track if we got webm+opus (StreamType.WebmOpus)
+	}
 
-    async loadMetadata(){
-        try {
+	async loadMetadata() {
+		try {
+			const ytOutput = await ytdlp(this.songUrl, {
+                dumpSingleJson: true,
+                noWarnings: true,
+                preferFreeFormats: true,
+                format: "251/bestaudio[acodec=opus]/bestaudio/best",
+                ...(process.platform !== "win32" && { 'cookies-from-browser': 'chromium' })
+            });
 
-            const subprocess = await youtubedl.exec(this.songUrl, {dumpSingleJson: true, noWarnings: true, preferFreeFormats: true});
-            let output = '';
+			
+            const jsonText = normalizeYtdlpOutput(ytOutput)
+			const info = JSON.parse(jsonText);
+			if (!info) throw new LinkNotFound("Error! Couldn't process and gather music data. Is the link valid?");
 
-            for await (const chunk of subprocess.stdout){
-                output += chunk.toString();
-            };
+			this.title = info.title;
+			this.thumbnail = info.thumbnail;
+			this.duration = info.duration;
 
-            const audioData = JSON.parse(output);
+			const { chosen, isOpusWebm } = pickBestAudioFormat(info);
 
-            if (!audioData){
-                throw new LinkNotFound("Error! Couldn't process and gather music data. Is the link valid?");
-            };
+			this.streamURL = chosen.url;
+			this.isOpusWebm = isOpusWebm
 
-            this.title = audioData.title;
-            this.thumbnail = audioData.thumbnail;
-            this.duration = audioData.duration
-            const urlFormat251 = audioData.formats.find(f => f.format_id === '251')?.url;
+			return true;
+		} catch (error) {
+			console.log("Error when processing link:", error?.message || error);
+			if (error.name === "ChildProcessError") return false;
+			throw error;
+		}
+	}
 
-            if (!urlFormat251){
-                throw new Error("Error: Couldn't find a valid stream URL for format 251");
-            };
+	async createAudioResource() {
+		try {
+			const { createAudioResource, StreamType } = require("@discordjs/voice");
+			const { spawn } = require("child_process");
 
-            this.streamURL = urlFormat251;
+			if (!this.streamURL) {
+				throw new (require("./errors").LinkNotFound)(
+					`Error. streamURL is ${this.streamURL}. Was the metadata loaded?`
+				);
+			}
 
-        } catch (error){
-            console.log("Error when processing link")
-            if (error.name == "ChildProcessError"){
-                return false;
-            }
-        };
-    };
+			const ff = spawn("ffmpeg", [
+				"-hide_banner",
+				"-loglevel", "warning",
+				"-reconnect", "1",
+				"-reconnect_streamed", "1",
+				"-reconnect_delay_max", "5",
+				"-i", this.streamURL,
+				"-vn", "-sn", "-dn",
+				"-map", "0:a:0",
+				"-c:a", "libopus",
+				"-b:a", "128k",
+				"-ar", "48000",
+				"-ac", "2",
+				"-f", "ogg",
+				"pipe:1"
+			], { stdio: ["ignore", "pipe", "pipe"] });
 
-    async createAudioResource(){
-        try {
-        const { createAudioResource, StreamType } = require("@discordjs/voice");
+			ff.stderr.on("data", d => console.warn(`[ffmpeg] ${d}`));
+			ff.on("close", code => console.log(`[ffmpeg] exited ${code}`));
 
-        if (!this.streamURL){
-            throw new LinkNotFound(`Error. streamURL is ${this.streamURL}. Was the metadata loaded?`);
-        };
-
-        const audioResource = createAudioResource(this.streamURL, {inputType: StreamType.WebmOpus});
-        return audioResource;
-
-        } catch (error){
-            console.error(error);
-        };
-    };
-
-};
-
+			// Tell discord this is Ogg Opus
+			return createAudioResource(ff.stdout, { inputType: StreamType.OggOpus });
+		} catch (error) {
+			console.error(error);
+		}
+	}
+}
 
 module.exports = Song;

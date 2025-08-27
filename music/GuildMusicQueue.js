@@ -17,7 +17,7 @@ class MusicQueue {
         this.isPlaying = false;
         this.idleTime = null;
         this.channel = this.interaction.channel;
-        this.repeatSong = true;
+        this.repeatSong = false;
         this.isPlayingMessage = null;
 
         if (!this.voiceConnection){
