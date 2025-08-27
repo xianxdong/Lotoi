@@ -1,12 +1,24 @@
 const { Events, EmbedBuilder } = require("discord.js");
+const config = require("../config.json")
 
 module.exports = {
 
     name: Events.MessageDelete,
     async execute(message, client){
 
-        if (message.content === null){
-            return ;
+        if (message.partial){
+            try {
+                message = await message.fetch();
+            } catch (error){
+                return;
+            }
+        }
+
+        if (!message || !message.author){
+            return;
+        }
+        if (message.author.bot){
+            return;
         }
 
         const embed = new EmbedBuilder()
@@ -21,7 +33,7 @@ module.exports = {
 
         const logChannel = await client.channels.fetch("1390744469233729668");
         try {
-            if (message.content != null && message.author.id != "823992654425620575"){
+            if (message.content != null){
                 await logChannel.send({embeds: [embed]});
             }
             // console.log(message);
