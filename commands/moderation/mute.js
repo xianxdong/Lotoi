@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits, ThreadAutoArchiveDuration, flatten } = require("discord.js");
 const ms = require("ms");
 const config = require("../../config");
+require("dotenv").config();
 
 function formatDuration(duration) {
     const seconds = Math.floor(duration / 1000);
@@ -40,7 +41,7 @@ module.exports = {
 
         const targetMember = interaction.options.getMember("user");
         const muteReason = interaction.options.getString("reason") ?? "No reason provided.";
-        const botInfo = await interaction.guild.members.fetch(config.clientId);
+        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const muteDuration = interaction.options.getString("duration");
         const muteInMs = ms(muteDuration);
 

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const { joinVoiceChannel } = require('@discordjs/voice');
 const config = require("../../config");
+require("dotenv").config();
 
 module.exports = {
 
@@ -9,7 +10,7 @@ module.exports = {
         .setDescription("Joins the vc the member is in"),
     
     async execute(interaction){
-        const botInfo = await interaction.guild.members.fetch(config.clientId);
+        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(config.red)

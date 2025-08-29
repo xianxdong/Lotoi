@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits} = require("discord.js");
 const config = require("../../config.json");
+require("dotenv").config();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,7 +19,7 @@ module.exports = {
     async execute(interaction){
         const targetMember = interaction.options.getMember("user");
         const kickReason = interaction.options.getString("reason") ?? "No reason provided.";
-        const botInfo = await interaction.guild.members.fetch(config.clientId);
+        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setColor(config.red)
             .setFields({name: " ", value: `I can't kick that member`})

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits, ThreadAutoArchiveDuration, flatten } = require("discord.js");
 const ms = require("ms");
 const config = require("../../config");
+require("dotenv").config();
 
 
 module.exports = {
@@ -23,7 +24,7 @@ module.exports = {
 
         const targetMember = interaction.options.getMember("user");
         const reason = interaction.options.getString("reason") ?? "No reason provided."
-        const botInfo = await interaction.guild.members.fetch(config.clientId);
+        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(config.red);
