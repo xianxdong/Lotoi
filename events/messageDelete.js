@@ -1,5 +1,4 @@
 const { Events, EmbedBuilder } = require("discord.js");
-const config = require("../config.json")
 
 module.exports = {
 
@@ -31,8 +30,10 @@ module.exports = {
             .setFooter({text:`Author: ${message.author.id} | Message ID: ${message.id}`})
             .setTimestamp();
 
-        const logChannel = await client.channels.fetch("1390744469233729668");
+        
         try {
+            // Will be later replaced with database for server customization
+            const logChannel = await client.channels.fetch("1410727602259365980");
             if (message.content != null){
                 await logChannel.send({embeds: [embed]});
             }

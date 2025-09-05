@@ -49,10 +49,10 @@ module.exports = {
             .setColor(0x0099FF)
             .setFooter({text:`User ID: ${newMessage.author.id}`})
             .setTimestamp();
-        const logChannel = await client.channels.fetch('1390744469233729668');
         try {
+            // Will be later replaced with database for server customization
+            const logChannel = await client.channels.fetch('1410727602259365980');
             await logChannel.send({embeds: [embed]});
-            // console.log(newMessage);
         } catch(error) {
             console.error(error);
         }

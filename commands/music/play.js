@@ -2,8 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js"
 const { getVoiceConnection, AudioPlayerStatus, entersState , VoiceConnectionStatus, joinVoiceChannel } = require('@discordjs/voice');
 const config = require("../../config");
 const MusicQueue = require("../../music/GuildMusicQueue");
-const queueManager = require("../../music/queueManager")
-const { InvalidLinkError, EmptyQueueList } = require("../../music/errors")
+const queueManager = require("../../music/queueManager");
+const { InvalidLinkError, EmptyQueueList } = require("../../music/errors");
 
 module.exports = {
 
