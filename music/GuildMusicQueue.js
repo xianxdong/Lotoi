@@ -55,7 +55,8 @@ class MusicQueue {
                             await this.channel.send("Leaving the voice channel due to inactivity.")
 
                             if (this.voiceConnection && this.voiceConnection.state.status !== VoiceConnectionStatus.Destroyed){
-                                this.voiceConnection.destroy();
+                                this.stop()
+                                queueManager.delete(interaction.guild.id);
                             }
 
                             this.idleTime = null;
