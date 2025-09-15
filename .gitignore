@@ -1,4 +1,3 @@
-config.json
 node_modules
 .env
 local-deploy-commands.js
