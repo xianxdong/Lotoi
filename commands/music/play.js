@@ -56,12 +56,12 @@ module.exports = {
 
             if (songList.length > 0){
                 const song = songList[songList.length - 1];
-                embed.setFields({name: "", value: `[${song.title}](${song.songUrl}) -[${song.duration}]`}).setColor(config.green)
+                embed.setFields({name: "", value: `[${song.title}](${song.songUrl}) **-** \`[${song.duration}]\``}).setColor(config.green)
                 .setAuthor({name: `Added song to queue #${songList.length + 1}`, iconURL: interaction.user.avatarURL()});
             } else if (songList.length === 0){
                 const song = queue.getCurrentSong();
-                embed.setFields({name: "", value: `[${song.title}](${song.songUrl}) -[${song.duration}]`}).setColor(config.green)
-                .setAuthor({name: `Added song to queue #${songList.length + 1}`, iconURL: interaction.user.avatarURL()});
+                embed.setFields({name: "", value: `[${song.title}](${song.songUrl}) **-** \`[${song.duration}]\``}).setColor(config.green)
+                .setAuthor({name: `Added song to queue`, iconURL: interaction.user.avatarURL()});
             };
 
             await interaction.editReply({embeds: [embed]});
