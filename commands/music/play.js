@@ -31,21 +31,18 @@ module.exports = {
 
         try {
             await interaction.deferReply();
-            const existingConnection = getVoiceConnection(interaction.guild.id);
-
-            if (!existingConnection){
-                joinVoiceChannel({
-                    channelId: interaction.member.voice.channelId,
-                    guildId: interaction.guild.id,
-                    adapterCreator: interaction.guild.voiceAdapterCreator
-                });
-            };
 
             let queue = queueManager.get(interaction.guild.id);
             if (!queue){
                 queue = new MusicQueue(interaction.guild.id, interaction);
                 queueManager.set(interaction.guild.id, queue);
             }
+
+            await queue.ensureConnection({
+                channelId: interaction.member.voice.channelId,
+                guildId: interaction.guild.id,
+                adapterCreator: interaction.guild.voiceAdapterCreator
+            });
 
             const musicSuccess = await queue.addSong(urlLink, interaction);
 
