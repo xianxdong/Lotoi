@@ -2,6 +2,7 @@ const youtubedl = require("youtube-dl-exec");
 const { LinkNotFound } = require("./errors");
 const { normalizeYtdlpOutput } = require("./ytdlp-output-helper");
 const { pickBestAudioFormat } = require("./bestAudioFormatHelper");
+const { formatDuration } = require("./AudioLengthFormatHelper");
 const fs = require('fs');
 
 // Pick yt-dlp path depending on OS
@@ -56,6 +57,7 @@ class Song {
 			this.title = info.title;
 			this.thumbnail = info.thumbnail;
 			this.duration = info.duration;
+			this.duration = formatDuration(this.duration);
 
 			const { chosen, isOpusWebm } = pickBestAudioFormat(info);
 
