@@ -214,7 +214,7 @@ class MusicQueue {
         const embed = new EmbedBuilder()
             .setColor("#7bb1f5")
             .setTimestamp()
-            .setFields({name: "", value: `[${this.currentSong.title}](${this.currentSong.songUrl})`})
+            .setFields({name: "", value: `[${this.currentSong.title}](${this.currentSong.songUrl}) **-** \`[${this.currentSong.duration}]\``})
             .setThumbnail(this.currentSong.thumbnail)
             .setAuthor({name: "MUSIC PANEL", iconURL: this.interaction.user.avatarURL()})
 
