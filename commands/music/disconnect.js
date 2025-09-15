@@ -41,7 +41,6 @@ module.exports = {
             }
 
             queue.stop();
-            queueManager.delete(interaction.guild.id);
             await interaction.editReply({embeds: [embed]});
         } catch (error){
             console.error(error);
