@@ -11,7 +11,7 @@ class MusicQueue {
     constructor(guildId, interaction){
         this.guildId = guildId;
         this.interaction = interaction;
-        this.voiceConnection = getVoiceConnection(guildId);
+        this.voiceConnection = getVoiceConnection(guildId) || null;
         this.audioPlayer = createAudioPlayer({behaviors : {noSubscriber: NoSubscriberBehavior.Pause}});
         this.songList = [];
         this.currentSong = null;
@@ -21,43 +21,53 @@ class MusicQueue {
         this.repeatSong = false;
         this.isPlayingMessage = null;
 
-        if (!this.voiceConnection){
-            throw new VoiceConnectionError(`Error. No voice connection found for guild: ${guildId}`);
-        };
+        // if (!this.voiceConnection){
+        //     throw new VoiceConnectionError(`Error. No voice connection found for guild: ${guildId}`);
+        // };
         
-        this.voiceConnection.subscribe(this.audioPlayer);
+        // this.voiceConnection.subscribe(this.audioPlayer);
 
         this.audioPlayer.on('stateChange', (oldState, newState) => {
             console.log(`Audio player in ${this.interaction.guild.name} transitioned from ${oldState.status} to ${newState.status}`);
         });
 
-        this.setupConnectionListeners(this.voiceConnection);
+        // this.setupConnectionListeners(this.voiceConnection);
 
-        this.voiceConnection.on(VoiceConnectionStatus.Destroyed, async () =>{
-            console.log(`Bot has disconnected in ${this.interaction.guild.name}. Destorying audioplayer`);
-            this.audioPlayer.stop(true); //sets audioplayer to idle
-            this.voiceConnection = null;
-        });
+        if (this.voiceConnection){
+            this.voiceConnection.subscribe(this.audioPlayer);
+            this.setupConnectionListeners(this.voiceConnection);
+        }
 
         this.audioPlayer.on(AudioPlayerStatus.AutoPaused, async () => {
             this.audioPlayer.stop(true);
-        })
+        });
 
         this.audioPlayer.on(AudioPlayerStatus.Idle, async () => {
-            this.currentSong = null;
             this.isPlaying = false;
-            this.voiceConnection = getVoiceConnection(guildId);
+
+            this.voiceConnection = getVoiceConnection(guildId) || null;
 
             if (this.voiceConnection){
                 if (this.songList.length === 0){
+                    this.currentSong = null;
+
                     if (!this.idleTime){
                         this.idleTime = setTimeout( async () => {
+
                             console.log(`Bot in ${this.interaction.guild.name} was idle for 5 minutes. Disconnecting bot`);
-                            await this.channel.send("Leaving the voice channel due to inactivity.")
+
+                            try{
+                                if (this.channel){
+                                    await this.channel.send("Leaving the voice channel due to inactivity.");
+                                };
+                            } catch (error){
+                                console.error("Error: Failed to send inactivity message in chat");
+                            };
+
 
                             if (this.voiceConnection && this.voiceConnection.state.status !== VoiceConnectionStatus.Destroyed){
                                 this.stop()
-                                queueManager.delete(interaction.guild.id);
+                                queueManager.delete(this.guildId);
                             }
 
                             this.idleTime = null;
@@ -97,7 +107,7 @@ class MusicQueue {
             return;
         };
 
-        this.voiceConnection.on(VoiceConnectionStatus.Disconnected, async () =>{
+        this.voiceConnection.on(VoiceConnectionStatus.Disconnected, async () => {
             try {
                 await Promise.race([
                     entersState(this.voiceConnection, VoiceConnectionStatus.Signalling, 1_000),
@@ -108,19 +118,37 @@ class MusicQueue {
                 // Seems to be a real disconnect which SHOULDN'T be recovered from
                 if (this.voiceConnection.state.status !== VoiceConnectionStatus.Destroyed){
                     this.voiceConnection.destroy();
-                }                
-            }
-        })
-    }
 
-    async retryConnection(){
-        try{
-            this.voiceConnection = getVoiceConnection(this.guildId);
+                if (this.idleTime){
+                    clearTimeout(this.idleTime);
+                    this.idleTime = null;
+                };
+                };       
+            };
+        });
+
+        this.voiceConnection.on(VoiceConnectionStatus.Destroyed, async () => {
+            console.log(`Bot has disconnected in ${this.interaction.guild.name}. Destorying audioplayer`);
+            this.audioPlayer.stop(true); //sets audioplayer to idle
+            this.voiceConnection = null;
+        });
+
+    };
+
+    async ensureConnection(joinOptions){
+        const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
+
+        if (this.voiceConnection && this.voiceConnection.state.status !== VoiceConnectionStatus.Destroyed){
             this.voiceConnection.subscribe(this.audioPlayer);
             this.setupConnectionListeners(this.voiceConnection);
-        } catch (error){
-            console.error(error)
-        }
+            return this.voiceConnection;
+        };
+
+        this.voiceConnection = joinVoiceChannel(joinOptions);
+        this.voiceConnection.subscribe(this.audioPlayer);
+        this.setupConnectionListeners(this.voiceConnection);
+        return this.voiceConnection;
+
     }
 
     pause(){
@@ -152,7 +180,7 @@ class MusicQueue {
         try {
             const connection = getVoiceConnection(this.guildId);
             if (!connection || connection.state.status === VoiceConnectionStatus.Destroyed){
-                await this.retryConnection();
+                throw new VoiceConnectionError("Error: No active voice connection. ensureConnection must be called first.");
             } else {
                 this.voiceConnection = connection;
             }
@@ -164,16 +192,16 @@ class MusicQueue {
             this.currentSong = null;
             this.isPlaying = false;
             throw new EmptyQueueList(`Error! The queue is empty`);
-        } 
-        
+        };
+
         if (this.idleTime){
             clearTimeout(this.idleTime);
             this.idleTime = null;
-        }
+        };
 
         if (this.isPlaying === true){
             return;
-        }
+        };
 
         if (this.repeatSong === false){
             const nextSong = this.songList.shift();
@@ -191,15 +219,13 @@ class MusicQueue {
             .setAuthor({name: "MUSIC PANEL", iconURL: this.interaction.user.avatarURL()})
 
         try {
-
             if (this.isPlayingMessage){
                 try {
                     await this.isPlayingMessage.delete();
                 } catch (error){
                     console.error(error);
-                }
-            }
-
+                };
+            };
             const resource = await this.currentSong.createAudioResource();
             this.audioPlayer.play(resource);
             this.isPlaying = true;
@@ -216,7 +242,7 @@ class MusicQueue {
                 console.log("Max automatic song retries reached. Stopping playback.");
                 this.isPlaying = false;
                 this.currentSong = null;
-            }
+            };
         };
     };
 
@@ -251,6 +277,5 @@ class MusicQueue {
     };
 
 };
-
 
 module.exports = MusicQueue;
