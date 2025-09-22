@@ -25,7 +25,7 @@ module.exports = {
             .setFields({name: " ", value: `I can't ban that member`})
             .setTimestamp();
 
-        if (!(interaction.member.permissions.has(PermissionFlagsBits.Administrator)) || !(interaction.member.permissions.has(PermissionFlagsBits.BanMembers))){
+        if (!(interaction.member.permissions.has(PermissionFlagsBits.Administrator)) && !(interaction.member.permissions.has(PermissionFlagsBits.BanMembers))){
             embed.setFields({name: " ", value: `Missing permissions: ban_members`});
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
