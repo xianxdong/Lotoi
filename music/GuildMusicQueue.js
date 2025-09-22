@@ -229,8 +229,13 @@ class MusicQueue {
             const resource = await this.currentSong.createAudioResource();
             this.audioPlayer.play(resource);
             this.isPlaying = true;
-            this.isPlayingMessage = await this.channel.send({embeds: [embed]});
 
+            try {
+                this.isPlayingMessage = await this.channel.send({embeds: [embed]});
+            } catch (error){
+                console.log(`Error: Couldn't send music panel in ${this.guildId}. Likely due to insufficient bot permissions.`);
+            }
+            
         } catch (error){
             console.error(`Failed to load and play ${this.currentSong.title}. Trying next song. Error: ${error}`);
 
