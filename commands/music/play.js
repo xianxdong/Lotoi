@@ -18,6 +18,7 @@ module.exports = {
         ),
 
     async execute(interaction){
+        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const urlLink = interaction.options.getString("url");
         const embed = new EmbedBuilder()
             .setTimestamp()
@@ -27,7 +28,35 @@ module.exports = {
         if (interaction.member.voice.channelId === null){
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
-        }
+        } else if (botInfo.voice.channelId !== interaction.member.voice.channelId){
+            embed.setFields({name: "", value: "You are not in the same VC channel as the bot"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (!botPermission.has(PermissionFlagsBits.ViewChannel)){
+            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: ViewChannel"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (!botPermission.has(PermissionFlagsBits.Connect)){
+            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: Connect"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (!botPermission.has(PermissionFlagsBits.Speak)){
+            embed.setFields({name: "", value: "Cannot speak in vc. Mission permissions: Speak"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (channel.userLimit && channel.userLimit > 0 && channel.members.size >= channel.userLimit && !botPermission.has(PermissionFlagsBits.MoveMembers)) {
+            embed.setFields({ name: "", value: "The voice channel is full. Missing permissions to join: MoveMembers" });
+            await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            return;
+        };
 
         try {
             await interaction.deferReply();
@@ -68,7 +97,7 @@ module.exports = {
             
         } catch (error){
             console.error(error);
-            await interaction.editReply("Error fetching audio. Please try again");
+            await interaction.editReply("Error something went wrong. Please try again");
         };
     }
 };

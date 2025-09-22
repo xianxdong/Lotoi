@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { joinVoiceChannel } = require('@discordjs/voice');
 const config = require("../../config");
 require("dotenv").config();
@@ -29,12 +29,40 @@ module.exports = {
             return;
         }
 
+        const channel = interaction.member.voice.channel;
+        const botPermission = botInfo.permissionsIn(channel);
+
+        if (!botPermission.has(PermissionFlagsBits.ViewChannel)){
+            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: ViewChannel"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (!botPermission.has(PermissionFlagsBits.Connect)){
+            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: Connect"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (!botPermission.has(PermissionFlagsBits.Speak)){
+            embed.setFields({name: "", value: "Cannot speak in vc. Mission permissions: Speak"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+
+        if (channel.userLimit && channel.userLimit > 0 && channel.members.size >= channel.userLimit && !botPermission.has(PermissionFlagsBits.MoveMembers)) {
+            embed.setFields({ name: "", value: "The voice channel is full. Missing permissions to join: MoveMembers" });
+            await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            return;
+        };
+
         try {
             await interaction.deferReply();
             const connection = joinVoiceChannel({
                 channelId: interaction.member.voice.channelId,
                 guildId: interaction.guild.id,
-                adapterCreator: interaction.guild.voiceAdapterCreator});
+                adapterCreator: interaction.guild.voiceAdapterCreator
+            });
 
             if (!connection){
                 embed.setFields({name: "", value: `Failed to connect to VC`});
