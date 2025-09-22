@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { getVoiceConnection } = require("@discordjs/voice")
 const config = require("../../config");
 const queueManager = require("../../music/queueManager")
 require("dotenv").config();
@@ -33,9 +34,10 @@ module.exports = {
         try {
             await interaction.deferReply();
             let queue = queueManager.get(interaction.guild.id);
+            const connection = getVoiceConnection(interaction.guild.id);
 
-            if (!queue){
-                embed.setFields({name: "", value: "No active music session found"}).setColor(config.red);
+            if (connection && !queue){
+                connection.destroy()
                 await interaction.editReply({embeds: [embed]});
                 return;
             }
