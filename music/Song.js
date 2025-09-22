@@ -56,8 +56,7 @@ class Song {
 
 			this.title = info.title;
 			this.thumbnail = info.thumbnail;
-			this.duration = info.duration;
-			this.duration = formatDuration(this.duration);
+			this.duration = formatDuration(info.duration);
 
 			const { chosen, isOpusWebm } = pickBestAudioFormat(info);
 
