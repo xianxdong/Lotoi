@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const { getVoiceConnection, AudioPlayerStatus, entersState , VoiceConnectionStatus, joinVoiceChannel } = require('@discordjs/voice');
 const config = require("../../config");
 const MusicQueue = require("../../music/GuildMusicQueue");
@@ -33,6 +33,9 @@ module.exports = {
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         };
+
+        const channel = interaction.member.voice.channel;
+        const botPermission = botInfo.permissionsIn(channel);
 
         if (!botPermission.has(PermissionFlagsBits.ViewChannel)){
             embed.setFields({name: "", value: "Cannot join vc. Mission permissions: ViewChannel"});
