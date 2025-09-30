@@ -1,40 +1,60 @@
-const { SlashCommandBuilder, MessageFlags, EmbedBuilder } = require("discord.js");
-const MusicQueue = require("../../music/GuildMusicQueue");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const queueManager = require("../../music/queueManager");
 const config = require("../../config");
 
-module.exports = {
+const MAX_LINES = 25;
 
+module.exports = {
     data: new SlashCommandBuilder()
         .setName("queue")
-        .setDescription("Returns the queue list"),
+        .setDescription("Displays the current music queue"),
 
-    async execute(interaction){
+    async execute(interaction) {
         await interaction.deferReply();
-        let queue = queueManager.get(interaction.guild.id);
-        if (!queue){
-            queue = new MusicQueue(interaction.guild.id, interaction);
-            queueManager.set(interaction.guild.id, queue);
-        };
 
-        songList = queue.getSongList();
+        const queue = queueManager.get(interaction.guild.id);
+        const current = queue?.getCurrentSong?.() || null;
+        const songList = queue?.getSongList?.() || [];
 
-        console.log(songList);
-        
-        answer = `#1 ${songList[0].title}`
+        // Build "Now Playing"
+        const nowPlaying = current
+            ? `[${current.title}](${current.songUrl}) \`[${current.duration}]\``
+            : "None";
 
-        for (let i = 1; i < songList.length; i++){
-            answer = answer + `#${i} ${songList[i].length}`
+        // Build upcoming queue lines
+        const lines = songList.map((song, i) => {
+            const pos = i + 1;
+            const title = song.title || "Untitled";
+            const url = song.songUrl || "https://youtu.be/";
+            const duration = song.duration ? ` \`[${song.duration}]\`` : "";
+            return `**#${pos}** [${title}](${url})${duration}`;
+        });
+
+        const shown = lines.slice(0, MAX_LINES);
+        const remaining = lines.length - shown.length;
+
+        const parts = [];
+        parts.push(`**Now Playing:** ${nowPlaying}`);
+        if (shown.length > 0) {
+            parts.push(""); // spacer
+            parts.push("**Queue:**");
+            parts.push(shown.join("\n"));
+        } else if (!current) {
+            // Nothing playing and no queued items: show a simple note
+            parts.push("");
+            parts.push("The queue is empty.");
         }
 
-        // await interaction.reply("Testing");
+        const embed = new EmbedBuilder()
+            .setColor(config.blurple || "#5665f3")
+            .setDescription(parts.join("\n"))
+            .setTimestamp()
+            .setAuthor({name: interaction.user.username, iconURL: interaction.user.avatarURL()});
 
-        if (!songList){
-            await interaction.editReply("The queue is empty!");
-        } else {
-            await interaction.editReply(songList[0].title);
+        if (remaining > 0) {
+            embed.setFooter({ text: `...and ${remaining} more` });
         }
 
+        await interaction.editReply({ embeds: [embed] });
     }
-
 };
