@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits, ThreadAutoArchiveDuration, flatten } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const ms = require("ms");
 const config = require("../../config");
 require("dotenv").config();
