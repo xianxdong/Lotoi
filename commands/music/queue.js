@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const queueManager = require("../../music/queueManager");
 const config = require("../../config");
 
@@ -10,8 +10,17 @@ module.exports = {
         .setDescription("Displays the current music queue"),
 
     async execute(interaction) {
+        
+        if (interaction.member.voice.channelId === null){
+            const embed = new EmbedBuilder()
+                .setTimestamp()
+                .setColor(config.red)
+                .setFields({name: "", value: "Please join the VC first"});
+            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
+            return;
+        };
+        
         await interaction.deferReply();
-
         const queue = queueManager.get(interaction.guild.id);
         const current = queue?.getCurrentSong?.() || null;
         const songList = queue?.getSongList?.() || [];
