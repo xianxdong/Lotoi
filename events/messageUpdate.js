@@ -1,9 +1,15 @@
 const { Events, EmbedBuilder } = require("discord.js");
+const guildConfigModel = require("../model/guildConfigModel");
+
 
 module.exports = {
     name: Events.MessageUpdate,
     async execute(oldMessage, newMessage, client){
         // console.log("Message event fired");
+
+        const settings = await guildConfigModel.findOne({ guildId: newMessage.guildId });
+        const channelId = settings?.messageLogChannel;
+        if (!channelId) return;
 
         try {
             if (oldMessage.partial){
@@ -51,7 +57,7 @@ module.exports = {
             .setTimestamp();
         try {
             // Will be later replaced with database for server customization
-            const logChannel = await client.channels.fetch('1410727602259365980');
+            const logChannel = await client.channels.fetch(channelId);
             await logChannel.send({embeds: [embed]});
         } catch(error) {
             console.error(error);

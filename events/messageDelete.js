@@ -1,14 +1,19 @@
-const { Events, EmbedBuilder } = require("discord.js");
+const { Events, EmbedBuilder, MessageReaction } = require("discord.js");
+const guildConfigModel = require("../model/guildConfigModel");
 
 module.exports = {
 
     name: Events.MessageDelete,
     async execute(message, client){
 
+        const settings = await guildConfigModel.findOne({ guildId: message.guildId });
+        const channelId = settings?.messageLogChannel;
+        if (!channelId) return;
+
         if (message.partial){
             try {
                 message = await message.fetch();
-            } catch (error){
+            } catch (error){S
                 return;
             }
         }
@@ -33,7 +38,7 @@ module.exports = {
         
         try {
             // Will be later replaced with database for server customization
-            const logChannel = await client.channels.fetch("1410727602259365980");
+            const logChannel = await client.channels.fetch(channelId);
             if (message.content != null){
                 await logChannel.send({embeds: [embed]});
             }

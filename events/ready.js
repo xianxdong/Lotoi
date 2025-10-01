@@ -12,6 +12,19 @@ module.exports = {
             console.error("Couldn't connect to mongodb:", error)
         }
 
+        try {
+            const GuildSettings = require("../model/guildConfigModel");
+            for (const g of client.guilds.cache.values()) {
+                await GuildSettings.findOneAndUpdate(
+                    { guildId: g.id },
+                    { $setOnInsert: { guildId: g.id } },
+                    { upsert: true, setDefaultsOnInsert: true, runValidators: true }
+                );
+            }
+        } catch (error){
+            console.ereror("Backfill error:", error)
+        }
+
         console.log(`Ready! Logged in as ${client.user.tag}`);
     },
 };
