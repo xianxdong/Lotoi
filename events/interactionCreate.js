@@ -1,4 +1,5 @@
 const { Events, MessageFlags } = require('discord.js');
+require("dotenv").config();
 
 module.exports = {
 	name: Events.InteractionCreate,
@@ -11,6 +12,10 @@ module.exports = {
 			console.error(`No command matching ${interaction.commandName} was found.`);
 			return;
 		}
+
+		if (process.env.DEPLOYMODE_MODE === "dev" && interaction.guild.id !== process.env.DISCORD_GUILD_ID) return;
+		if (process.env.DEPLOYMODE_MODE !== "dev" && interaction.guild.id === process.env.DISCORD_GUILD_ID) return;
+
 
 		try {
 			await command.execute(interaction);
