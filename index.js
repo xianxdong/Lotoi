@@ -2,6 +2,7 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const { Client, Collection, Partials } = require('discord.js');
+const { closeMongoose } = require("./database/mongoose");
 require("dotenv").config();
 
 // Create a new client instance
@@ -45,7 +46,9 @@ for (const file of eventFiles) {
 	}
 }
 
-// const player = new AudioPlayer()
+// Graceful shutdown
+process.on("SIGINT", async () => { console.log("Shutting down..."); await closeMongoose(); process.exit(0); });
+process.on("SIGTERM", async () => { console.log("Shutting down..."); await closeMongoose(); process.exit(0); });
 
 
 
