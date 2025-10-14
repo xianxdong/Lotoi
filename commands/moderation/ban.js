@@ -30,11 +30,6 @@ module.exports = {
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
 
-        } else if (targetMember === null) {
-            embed.setFields({name: " ", value: "I can't find that user"});
-            await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral });
-            return;
-
         } else if (targetMember.roles.highest.position >= interaction.member.roles.highest.position && interaction.member.id != interaction.guild.ownerId){
             embed.setFields({name: " ", value: `You can't ban someone higher than yourself`});
             await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
