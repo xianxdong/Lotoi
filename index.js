@@ -2,7 +2,6 @@
 const fs = require("node:fs")
 const path = require("node:path")
 const { Client, Collection, Partials } = require('discord.js');
-const { closeMongoose } = require("./database/mongoose");
 require("dotenv").config();
 
 // Create a new client instance
@@ -45,12 +44,6 @@ for (const file of eventFiles) {
 		client.on(event.name, (...args) => event.execute(...args, client));
 	}
 }
-
-// Graceful shutdown
-process.on("SIGINT", async () => { console.log("Shutting down..."); await closeMongoose(); process.exit(0); });
-process.on("SIGTERM", async () => { console.log("Shutting down..."); await closeMongoose(); process.exit(0); });
-
-
 
 // Log in to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
