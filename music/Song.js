@@ -4,6 +4,7 @@ const { normalizeYtdlpOutput } = require("./ytdlp-output-helper");
 const { pickBestAudioFormat } = require("./bestAudioFormatHelper");
 const { formatDuration } = require("./AudioLengthFormatHelper");
 const fs = require('fs');
+// require("dotenv").config(); // Uncomment if using .env file otherwise leave it commented out. env variables should automatically work if server supports env vars. 
 
 // Pick yt-dlp path depending on OS
 let ytDlpPath;
@@ -12,7 +13,7 @@ if (process.platform === "win32") {
 	ytDlpPath = "yt-dlp";
 } else {
 	// On Linux server, use the specific installed binary path
-	ytDlpPath = process.env.YTDLP_PATH || "yt-dlp";
+	ytDlpPath = process.env.YTDLP_PATH || "yt-dlp"; // Let it find the path of yt-dlp. If path can't be find, manually specify the path here or in .env/env var
 }
 
 const ytdlp = youtubedl.create(ytDlpPath);
@@ -27,13 +28,13 @@ class Song {
 		this.thumbnail = "";
 		this.duration = 0;
 		this.isOpusWebm = false; // track if we got webm+opus (StreamType.WebmOpus)
-	}
+	};
 
 	async loadMetadata() {
 		try {
 
 			function cookieOpts() {
-				const file = process.env.COOKIE_FILE; // set this ONLY on Railway
+				const file = process.env.COOKIE_FILE; // set this to the path of the cookie file or specify the cookie file path in .env/env var
 				if (!file) return {};
 				try {
 					const { size } = fs.statSync(file);
@@ -47,7 +48,7 @@ class Song {
 					noWarnings: true,
 					preferFreeFormats: true,
 					format: "251/bestaudio[acodec=opus]/bestaudio/best",
-					...cookieOpts(),               // ← only included on Railway
+					...cookieOpts(),               // ← include in servers, Should be fine to keep here
 			});
 
             const jsonText = normalizeYtdlpOutput(ytOutput)
