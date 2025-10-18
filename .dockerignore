@@ -1,0 +1,41 @@
+# ──────────────────────────────
+# Version control & editor junk
+# ──────────────────────────────
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+
+# ──────────────────────────────
+# Node artifacts & logs
+# ──────────────────────────────
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ──────────────────────────────
+# Environment files
+# (keep .env.example but exclude real ones)
+# ──────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ──────────────────────────────
+# OS/system junk
+# ──────────────────────────────
+Thumbs.db
+*.swp
+*.swo
+
+# ──────────────────────────────
+# Build/cache artifacts
+# ──────────────────────────────
+dist
+build
+coverage
+.tmp
+.cache
