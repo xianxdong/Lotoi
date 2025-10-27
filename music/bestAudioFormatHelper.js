@@ -7,6 +7,16 @@ const OPUS_ITAGS = ["251", "250", "249"];
 // Known HLS AV itags (mp4)
 const HLS_AV_ITAGS = ["91", "92", "93", "94", "95", "96"];
 
+function isStoryboard(f) {
+    const ext = (f.ext || "").toLowerCase();
+    const container = (f.container || "").toLowerCase();
+    const ac = (f.acodec || "").toLowerCase();
+    const vc = (f.vcodec || "").toLowerCase();
+    // storyboard/images typically show as mhtml and both codecs "none"
+    return ext === "mhtml" || container === "mhtml" || (ac === "none" && vc === "none");
+};
+
+
 /**
  * Pick the best audio format from yt-dlp info.
  * Prefers Opus-in-WebM (itag 251/250/249) when available,
@@ -14,10 +24,11 @@ const HLS_AV_ITAGS = ["91", "92", "93", "94", "95", "96"];
  */
 function pickBestAudioFormat(info) {
     const formats = Array.isArray(info.formats) ? info.formats : [];
+    const valid = formats.filter(f => f?.url && !isStoryboard(f));
 
     // quick lookup by itag
     function findFormatById(id) {
-        return formats.find(f => f && f.format_id === id && f.url);
+        return valid.find(f => f && f.format_id === id && f.url);
     }
 
     // 1) Prefer Opus-in-WebM (audio-only) when available
@@ -32,8 +43,8 @@ function pickBestAudioFormat(info) {
     };
 
     // Collect audio-only formats (no video codec, valid URL)
-    const audioOnly = formats
-        .filter(f => f?.url && (f.vcodec === "none" || !f.vcodec))
+    const audioOnly = valid
+        .filter(f => f.vcodec === "none" || !f.vcodec)
         .sort((a, b) => (b.abr || 0) - (a.abr || 0));
 
     // 2) Otherwise, take any audio-only with highest abr
@@ -48,17 +59,17 @@ function pickBestAudioFormat(info) {
 
     // 3) SABR fallback: pick a small HLS AV stream (ffmpeg drops video)
     for (const itag of HLS_AV_ITAGS) {
-        const fmt = findFormatById(itag);
-        if (fmt) {
-            return { chosen: fmt, isOpusWebm: false };
-        };
-    };
+        const format = findFormatById(itag);
+        if (format && (format.acodec && format.acodec.toLowerCase() !== "none")) {
+            return { chosen: format, isOpusWebm: false };
+        }
+    }
 
       // 4) Last resort: any m3u8 with both A/V present
-  const hlsAny = formats.find(f => f?.url && (f.protocol?.includes("m3u8") || f.manifest_url));
-  if (hlsAny) {
-    return { chosen: hlsAny, isOpusWebm: false };
-  }
+    const hlsAny = valid.find(f => (f.protocol?.includes("m3u8") || f.manifest_url) && f.acodec && f.acodec.toLowerCase() !== "none");
+    if (hlsAny) {
+        return { chosen: hlsAny, isOpusWebm: false };
+    }
 
   throw new LinkNotFound("No playable audio (or HLS) format found for this link.");
 }
