@@ -11,8 +11,6 @@ services:
         volumes:
             - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
             - lavalink-data:/data
-        ports:
-            - "2333:2333"
 
     bot:
         build:

@@ -1,0 +1,75 @@
+server:
+    port: 2333
+    address: 0.0.0.0
+    http2:
+        enabled: false
+
+lavalink:
+    # Add plugins here later (e.g., YouTube Source, Spotify, etc.)
+    # plugins: []
+    server:
+        password: "${LAVALINK_PASSWORD}"     # pulled from .env
+        sources:
+            # The default YouTube source is deprecated; use the YouTube Source plugin instead
+            youtube: false                   # enable via plugin later
+            bandcamp: false                   # native Bandcamp support
+            soundcloud: true                 # native SoundCloud support
+            twitch: false                     # Twitch live streams
+            vimeo: false                      # Vimeo videos
+            nico: true                       # Niconico videos
+            http: false                      # safer for prod; only enable if you need direct .mp3/.m3u8 URLs
+            local: false                     # disable for security; prevents reading local files
+        filters:
+            volume: true
+            equalizer: true
+            karaoke: true
+            timescale: true
+            tremolo: true
+            vibrato: true
+            distortion: true
+            rotation: true
+            channelMix: true
+            lowPass: true
+        nonAllocatingFrameBuffer: false
+        bufferDurationMs: 400
+        frameBufferDurationMs: 5000
+        opusEncodingQuality: 10
+        resamplingQuality: LOW
+        trackStuckThresholdMs: 10000
+        useSeekGhosting: true
+        playerUpdateInterval: 5
+        youtubePlaylistLoadLimit: 6
+        youtubeSearchEnabled: false          # will work once plugin is installed
+        soundcloudSearchEnabled: true
+        gc-warnings: true
+        timeouts:
+            connectTimeoutMs: 3000
+            connectionRequestTimeoutMs: 3000
+            socketTimeoutMs: 3000
+
+metrics:
+    prometheus:
+        enabled: false
+        endpoint: /metrics
+
+sentry:
+    dsn: ""
+    environment: ""
+
+logging:
+    file:
+        path: /data/logs/                    # use Docker volume path so logs persist
+    level:
+        root: INFO
+        lavalink: INFO
+    request:
+        enabled: true
+        includeClientInfo: true
+        includeHeaders: false
+        includeQueryString: true
+        includePayload: true
+        maxPayloadLength: 10000
+    logback:
+        rollingpolicy:
+            max-file-size: 1GB
+            max-history: 30
