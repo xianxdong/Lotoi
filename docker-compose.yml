@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+    lavalink:
+        image: ghcr.io/lavalink-devs/lavalink:4
+        container_name: lavalink
+        restart: unless-stopped
+        environment:
+            - JAVA_TOOL_OPTIONS=-Xms256m -Xmx1024m
+            - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+        volumes:
+            - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+            - lavalink-data:/data
+        ports:
+            - "2333:2333"
+
+    bot:
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        container_name: lotoi-bot
+        depends_on:
+            - lavalink
+        restart: unless-stopped
+        env_file:
+            - .env
+        environment:
+            - LAVALINK_HOST=#{LAVALINK_HOST}
+            - LAVALINK_PORT=${LAVALINK_PORT}
+            - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+
+volumes:
+    lavalink-data:
