@@ -34,10 +34,17 @@ module.exports = {
         try {
             await interaction.deferReply();
             let queue = queueManager.get(interaction.guild.id);
-            const connection = getVoiceConnection(interaction.guild.id);
+            const manager = interaction.client.manager;
+
+            const player = manager.players.get(interaction.guild.id)
+
+            const connection = player.connected
+
+            // const connection = getVoiceConnection(interaction.guild.id); 
 
             if (connection && !queue){
-                connection.destroy()
+                player.disconnect();
+                manager.players.delete(interaction.guild.id);
                 await interaction.editReply({embeds: [embed]});
                 return;
             }
