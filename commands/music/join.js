@@ -58,11 +58,17 @@ module.exports = {
 
         try {
             await interaction.deferReply();
-            const connection = joinVoiceChannel({
-                channelId: interaction.member.voice.channelId,
-                guildId: interaction.guild.id,
-                adapterCreator: interaction.guild.voiceAdapterCreator
-            });
+
+            const manager = interaction.client.manager;
+
+            const player = manager.players.get(interaction.guild.id) ?? manager.players.create({
+                    guildId: interaction.guild.id,
+                    voiceChannelId: interaction.member.voice.channelId,
+                    textChannelId: interaction.channel.id,
+                    autoPlay: false,
+                });
+
+            const connection = player.connect({ setDeaf: true });
 
             if (!connection){
                 embed.setFields({name: "", value: `Failed to connect to VC`});
