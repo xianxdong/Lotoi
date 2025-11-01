@@ -1,5 +1,4 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
-const { joinVoiceChannel } = require('@discordjs/voice');
 const config = require("../../config");
 require("dotenv").config();
 
