@@ -1,7 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
-const { getVoiceConnection } = require("@discordjs/voice")
 const config = require("../../config");
-const queueManager = require("../../music/queueManager")
+const queueManager = require("../../music/queueManager");
 require("dotenv").config();
 
 module.exports = {
@@ -35,24 +34,20 @@ module.exports = {
             await interaction.deferReply();
             let queue = queueManager.get(interaction.guild.id);
             const manager = interaction.client.manager;
-
-            const player = manager.players.get(interaction.guild.id)
-
-            const connection = player.connected
-
-            // const connection = getVoiceConnection(interaction.guild.id); 
+            const player = manager.players.get(interaction.guild.id);
+            const connection = player.connected;
 
             if (connection && !queue){
                 player.disconnect();
                 manager.players.delete(interaction.guild.id);
                 await interaction.editReply({embeds: [embed]});
                 return;
-            }
+            };
 
             queue.stop();
             await interaction.editReply({embeds: [embed]});
         } catch (error){
             console.error(error);
         };
-    }
-}
+    },
+};
