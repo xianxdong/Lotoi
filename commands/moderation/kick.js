@@ -19,7 +19,7 @@ module.exports = {
     async execute(interaction){
         const targetMember = interaction.options.getMember("user");
         const kickReason = interaction.options.getString("reason") ?? "No reason provided.";
-        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
+        const botInfo = interaction.guild.members.me ?? await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setColor(config.red)
             .setFields({name: " ", value: `I can't kick that member`})

@@ -41,7 +41,7 @@ module.exports = {
 
         const targetMember = interaction.options.getMember("user");
         const muteReason = interaction.options.getString("reason") ?? "No reason provided.";
-        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
+        const botInfo = interaction.guild.members.me ?? await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const muteDuration = interaction.options.getString("duration");
         const muteInMs = ms(muteDuration);
 
