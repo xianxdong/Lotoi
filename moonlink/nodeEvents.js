@@ -20,7 +20,7 @@ function attachNodeEvents(client) {
     client.__nodeEventsAttached = true;
 
     const manager = client.manager;
-    const VERBOSE = process.env.MOONLINK_VERBOSE
+    const VERBOSE = process.env.MOONLINK_VERBOSE === "1"
 
     // Helpers to keep logs compact and consistent
     const nodeTag = (node) => {

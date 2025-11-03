@@ -1,50 +1,71 @@
-version: "3.9"
+version: "3.9"  # Compose schema version
 
 services:
+    # ──────────────────────────────
+    # 🎧 Lavalink (audio node)
+    # ──────────────────────────────
     lavalink:
-        image: ghcr.io/lavalink-devs/lavalink:4
+        build:
+            context: ./lavalink            # Path to your custom Lavalink Dockerfile
+            dockerfile: Dockerfile         # Custom Dockerfile that bakes in the YouTube plugin
+            args:
+                - YT_PLUGIN_VER=1.16.0     # Pinned plugin version; bump only when you intentionally upgrade
         container_name: lavalink
-        restart: unless-stopped
+        restart: unless-stopped            # Auto-restart unless manually stopped (production best practice)
         environment:
-            - JAVA_TOOL_OPTIONS=-Xms256m -Xmx1024m
-            - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
-            - YOUTUBE_REFRESH_TOKEN=${YOUTUBE_REFRESH_TOKEN}
-            - YTCIPHER_PASSWORD=${YTCIPHER_PASSWORD}
+            - JAVA_TOOL_OPTIONS=-Xms256m -Xmx1024m    # JVM memory limits to prevent OOM crashes
+            - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}  # Lavalink auth password (set in Coolify)
+            - YOUTUBE_REFRESH_TOKEN=${YOUTUBE_REFRESH_TOKEN}  # OAuth token for YouTube Source
+            - YTCIPHER_PASSWORD=${YTCIPHER_PASSWORD}          # Password for yt-cipher service
+        depends_on:
+            yt-cipher:
+                condition: service_started  # Lavalink waits until yt-cipher starts (not necessarily healthy yet)
         volumes:
-            - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
-            - ./lavalink/plugins:/opt/Lavalink/plugins
-            - lavalink-data:/data
-        healthcheck: 
-            test: ["CMD-SHELL", "if [ ! -f /tmp/healthy_once ]; then curl -fsS -H 'Authorization: ${LAVALINK_PASSWORD}' http://127.0.0.1:2333/v4/info >/dev/null && touch /tmp/healthy_once; else exit 0; fi"]
-            interval: 5s
-            timeout: 2s
-            retries: 30
-            start_period: 0s
+            - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro  # Mount config as read-only
+            - lavalink-data:/data          # Persist Lavalink logs and cache data
+        healthcheck:
+            # Lavalink healthcheck — verifies it responds on /v4/info
+            test: ["CMD-SHELL", "if [ ! -f /tmp/hc_once ]; then wget -qO- --header='Authorization: ${LAVALINK_PASSWORD}' http://127.0.0.1:2333/v4/info >/dev/null 2>&1 || exit 1; touch /tmp/hc_once; fi"]
+            interval: 5s                   # Check every 5 seconds
+            timeout: 3s                    # Fail after 3 seconds if no response
+            retries: 30                    # Retry up to 30 times
+            start_period: 10s              # Wait 10 seconds before first check
 
+    # ──────────────────────────────
+    # 🔐 YouTube Cipher microservice
+    # ──────────────────────────────
     yt-cipher:
-        image: ghcr.io/kikkia/yt-cipher:master
+        image: ghcr.io/kikkia/yt-cipher:master  # Pull latest stable yt-cipher image
         container_name: yt-cipher
         restart: unless-stopped
         environment:
-            - PASSWORD=${YTCIPHER_PASSWORD}   # add YTCIPHER_PASSWORD to your .env
-            - PORT=8001                       # default is 8001; explicit for clarity
-        # No ports: Lavalink will reach it over the compose network at http://yt-cipher:8001
+            - PASSWORD=${YTCIPHER_PASSWORD}  # Shared secret with Lavalink plugin
+            - PORT=8001                      # Internal port; Lavalink uses http://yt-cipher:8001
+        # No ports exposed — this service is only accessed internally via Docker network
 
+    # ──────────────────────────────
+    # 🤖 Discord bot (Lotoi)
+    # ──────────────────────────────
     lotoi-bot:
         build:
-            context: .
+            context: .                       # Project root (contains Dockerfile for the bot)
             dockerfile: ./Dockerfile
         container_name: lotoi-bot
         depends_on:
             lavalink:
-                condition: service_healthy 
+                condition: service_healthy    # Only start once Lavalink passes its healthcheck
         restart: unless-stopped
         env_file:
-            - .env
+            - .env                            # Optional local env file (Coolify overrides take priority)
         environment:
+            # Lavalink connection parameters
             - LAVALINK_HOST=${LAVALINK_HOST}
             - LAVALINK_PORT=${LAVALINK_PORT}
             - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+            # Other secrets (like DISCORD_TOKEN, MONGO_URI, etc.) should be in Coolify → Environment Variables
 
+# ──────────────────────────────
+# 📦 Named volumes
+# ──────────────────────────────
 volumes:
-    lavalink-data:
+    lavalink-data:  # Stores Lavalink’s /data directory (logs, playback cache)
