@@ -9,8 +9,8 @@ module.exports = {
         try {
             await connectMongoose();
         } catch (error){
-            console.error("Couldn't connect to mongodb:", error)
-        }
+            console.error("Couldn't connect to mongodb:", error);
+        };
 
         try {
             const GuildSettings = require("../model/guildConfigModel");
@@ -22,9 +22,10 @@ module.exports = {
                 );
             }
         } catch (error){
-            console.ereror("Backfill error:", error)
-        }
+            console.error("Backfill error:", error);
+        };
 
         console.log(`Ready! Logged in as ${client.user.tag}`);
+        client.manager.init(client.user.id);
     },
 };
