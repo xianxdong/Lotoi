@@ -6,7 +6,9 @@ server:
 
 lavalink:
     # Add plugins here later (e.g., YouTube Source, Spotify, etc.)
-    # plugins: []
+    plugins: 
+        - dependency: "dev.lavalink.youtube:youtube-plugin:1.15.0"
+          snapshot: false # Set to true if you want to use a snapshot version.
     server:
         password: "${LAVALINK_PASSWORD}"     # pulled from .env
         sources:
@@ -16,7 +18,7 @@ lavalink:
             soundcloud: true                 # native SoundCloud support
             twitch: false                     # Twitch live streams
             vimeo: false                      # Vimeo videos
-            nico: true                       # Niconico videos
+            nico: false                       # Niconico videos
             http: false                      # safer for prod; only enable if you need direct .mp3/.m3u8 URLs
             local: false                     # disable for security; prevents reading local files
         filters:
@@ -46,6 +48,31 @@ lavalink:
             connectTimeoutMs: 3000
             connectionRequestTimeoutMs: 3000
             socketTimeoutMs: 3000
+
+# Plugin configuration (top-level). The YouTube Source plugin replaces the deprecated built-in YouTube source.
+plugins:
+    youtube:
+        enabled: true
+        allowSearch: false            # disallow ytsearch:/ytmsearch: (queries won't resolve yet)
+        allowDirectVideoIds: true     # allow bare video IDs (e.g., dQw4w9WgXcQ)
+        allowDirectPlaylistIds: true  # allow bare playlist IDs
+        remoteCipher:
+            url: "http://yt-cipher:8001"
+            password: "${YTCIPHER_PASSWORD}"
+        oauth:
+            enabled: true
+            refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
+            skipInitialization: true
+        clients:
+            - TVHTML5EMBEDDED
+            - TV
+            - ANDROID_VR
+            - WEB
+            - MWEB
+            - WEBEMBEDDED
+            - MUSIC
+            - ANDROID_MUSIC
+            - IOS
 
 metrics:
     prometheus:
