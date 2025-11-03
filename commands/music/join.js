@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags, PermissionFlagsBits } = require("discord.js");
 const config = require("../../config");
+const { ensureMoonlinkConnection } = require("../../music/ensureMoonlinkConnection");
 require("dotenv").config();
 
 module.exports = {
@@ -9,7 +10,7 @@ module.exports = {
         .setDescription("Joins the vc the member is in"),
     
     async execute(interaction){
-        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
+        const botInfo = interaction.guild.members.me ?? await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(config.red)
@@ -32,19 +33,19 @@ module.exports = {
         const botPermission = botInfo.permissionsIn(channel);
 
         if (!botPermission.has(PermissionFlagsBits.ViewChannel)){
-            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: ViewChannel"});
+            embed.setFields({name: "", value: "Cannot join vc. Missing permissions: ViewChannel"});
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         };
 
         if (!botPermission.has(PermissionFlagsBits.Connect)){
-            embed.setFields({name: "", value: "Cannot join vc. Mission permissions: Connect"});
+            embed.setFields({name: "", value: "Cannot join vc. Missing permissions: Connect"});
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         };
 
         if (!botPermission.has(PermissionFlagsBits.Speak)){
-            embed.setFields({name: "", value: "Cannot speak in vc. Mission permissions: Speak"});
+            embed.setFields({name: "", value: "Cannot speak in vc. Missing permissions: Speak"});
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         };
@@ -59,21 +60,27 @@ module.exports = {
             await interaction.deferReply();
 
             const manager = interaction.client.manager;
+            const voiceChannelId = interaction.member.voice.channelId;
+            const textChannelId = interaction.channel.id;
 
-            const player = manager.players.get(interaction.guild.id) ?? manager.players.create({
-                    guildId: interaction.guild.id,
-                    voiceChannelId: interaction.member.voice.channelId,
-                    textChannelId: interaction.channel.id,
-                    autoPlay: false,
-                });
+            // Use the helper to ensure a connected, ready player
+            const result = await ensureMoonlinkConnection(
+                manager,
+                interaction.guild,
+                voiceChannelId,
+                textChannelId,
+                {
+                    // These are optional; timeout is fixed in the helper (500ms).
+                    setDeaf: true,
+                    botMember: botInfo
+                }
+            );
 
-            const connection = player.connect({ setDeaf: true });
-
-            if (!connection){
+            if (!result.ok){
                 embed.setFields({name: "", value: `Failed to connect to VC`});
                 await interaction.editReply({embeds: [embed]});
                 return;
-            }
+            };
 
             embed.setFields({name: "", value: "Successfully connected to VC"}).setColor(config.green);
             await interaction.editReply({embeds: [embed]});

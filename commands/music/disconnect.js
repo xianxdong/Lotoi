@@ -10,7 +10,7 @@ module.exports = {
         .setDescription("Disconnects the bot from the vc manually"),
     
     async execute(interaction){
-        const botInfo = await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
+        const botInfo = interaction.guild.members.me ?? await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(config.green)
@@ -25,27 +25,29 @@ module.exports = {
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         } else if (botInfo.voice.channelId !== interaction.member.voice.channelId){
-            embed.setFields({name: "", value: "You are not in the same VC channel as the bot"});
+            embed.setFields({name: "", value: "You are not in the same VC channel as the bot"}).setColor(config.red);
             await interaction.reply({embeds: [embed], flags: MessageFlags.Ephemeral});
             return;
         };
 
         try {
             await interaction.deferReply();
-            let queue = queueManager.get(interaction.guild.id);
+
             const manager = interaction.client.manager;
             const player = manager.players.get(interaction.guild.id);
-            const connection = player.connected;
 
-            if (connection && !queue){
-                player.disconnect();
-                manager.players.delete(interaction.guild.id);
-                await interaction.editReply({embeds: [embed]});
-                return;
-            };
+            if (player) {
+                // No queue dependency: stop current track if any, disconnect, then destroy the player.
+                try { player.stop(); } catch (_) {}
+                try { player.disconnect(); } catch (_) {}
+                try { player.destroy(); } catch (_) {}
+                try { manager.players.delete(interaction.guild.id); } catch (_) {}
+            } else {
+                // Fallback: if for any reason a Moonlink player doesn't exist, force-disconnect the bot from VC.
+                try { await me.voice.disconnect(); } catch (_) {}
+            }
 
-            queue.stop();
-            await interaction.editReply({embeds: [embed]});
+            await interaction.editReply({ embeds: [embed] });
         } catch (error){
             console.error(error);
         };

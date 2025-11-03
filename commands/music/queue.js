@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js"
 const queueManager = require("../../music/queueManager");
 const config = require("../../config");
 
-const MAX_LINES = 25;
+const MAX_LINES = 15;
 
 module.exports = {
     data: new SlashCommandBuilder()
