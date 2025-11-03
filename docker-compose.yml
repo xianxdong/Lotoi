@@ -8,22 +8,41 @@ services:
         environment:
             - JAVA_TOOL_OPTIONS=-Xms256m -Xmx1024m
             - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
+            - YOUTUBE_REFRESH_TOKEN=${YOUTUBE_REFRESH_TOKEN}
+            - YTCIPHER_PASSWORD=${YTCIPHER_PASSWORD}
         volumes:
             - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+            - ./lavalink/plugins:/opt/Lavalink/plugins
             - lavalink-data:/data
+        healthcheck: 
+            test: ["CMD-SHELL", "if [ ! -f /tmp/healthy_once ]; then curl -fsS -H 'Authorization: ${LAVALINK_PASSWORD}' http://127.0.0.1:2333/v4/info >/dev/null && touch /tmp/healthy_once; else exit 0; fi"]
+            interval: 5s
+            timeout: 2s
+            retries: 30
+            start_period: 0s
 
-    bot:
+    yt-cipher:
+        image: ghcr.io/kikkia/yt-cipher:master
+        container_name: yt-cipher
+        restart: unless-stopped
+        environment:
+            - PASSWORD=${YTCIPHER_PASSWORD}   # add YTCIPHER_PASSWORD to your .env
+            - PORT=8001                       # default is 8001; explicit for clarity
+        # No ports: Lavalink will reach it over the compose network at http://yt-cipher:8001
+
+    lotoi-bot:
         build:
             context: .
             dockerfile: ./Dockerfile
         container_name: lotoi-bot
         depends_on:
-            - lavalink
+            lavalink:
+                condition: service_healthy 
         restart: unless-stopped
         env_file:
             - .env
         environment:
-            - LAVALINK_HOST=#{LAVALINK_HOST}
+            - LAVALINK_HOST=${LAVALINK_HOST}
             - LAVALINK_PORT=${LAVALINK_PORT}
             - LAVALINK_PASSWORD=${LAVALINK_PASSWORD}
 
