@@ -1,3 +1,4 @@
 node_modules
 .env
 local-deploy-commands.js
+lavalink/plugins
