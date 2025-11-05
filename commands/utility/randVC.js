@@ -4,7 +4,7 @@ require("dotenv").config();
 module.exports = {
 
     data: new SlashCommandBuilder()
-    .setName("randomVC")
+    .setName("randomvc")
     .setDescription("Chooses a random person from VC"),
 
     async execute(interaction){
