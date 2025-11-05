@@ -126,6 +126,10 @@ class MusicQueue {
         try { this.player?.pause?.(false); } catch {}
     }
 
+    setVolume(){
+        this.player.setVolume(40);
+    };
+
     /**
      * Add a song by URL or query. Enqueues into Moonlink and starts playback if idle.
      * Returns false on resolution failure, true otherwise.
@@ -156,6 +160,7 @@ class MusicQueue {
         try {
             if (!this.player.playing) {
                 await this.player.play();
+                this.setVolume();
             }
         } catch {}
 
