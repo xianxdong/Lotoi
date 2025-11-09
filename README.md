@@ -1,80 +1,123 @@
-# 🎧 Lotoi
-Lotoi is a self-contained, production-grade Discord music bot featuring queue management, MongoDB persistence, and full Docker deployment.
+# 🎧 Discord Bot
 
-## ✨Features
-- 🎵 Stream high-quality audio using ffmpeg + yt-dlp
-- 💬 Modern slash commands with discord.js v14
-- 🧠 MongoDB (via Mongoose) for persistent data and stats
-- 🐳 Docker-ready for cloud deployment (Railway, Render, etc.)
-- 🧩 Modular architecture with easy-to-extend command system
+A Discord bot featuring **music playback**, **moderation tools**, and **Docker Compose** deployment.  
+Built with **Node.js**, **discord.js v14**, **Lavalink + Moonlink**, and **MongoDB**.
 
-## 🧰Tech Stack
-- Node.js 18+
-- discord.js v14
-- MongoDB + Mongoose
-- yt-dlp + ffmpeg
-- Docker (for deployment)
 
-## ⚙️Environment Variables
-```env
-DISCORD_TOKEN=your-discord-bot-token
-CLIENT_ID=your-bot-client-id
-GUILD_ID=your-server-id
-MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/database
-NODE_ENV=dev
-YTDLP_PATH=path/to/ytdlp
-COOKIE_FILE=path/to/cookie/file
-```
-📄 You can copy .env.example to .env and fill in your values.\
-⚠️ **Note:** In `.env` files do **not** put spaces around `=` (use `KEY=value`, not `KEY = value`).
+## ✨ Features
+- 🎵 **High-quality audio** via **Lavalink** with **Moonlink** client
+- 💬 **Slash commands** (discord.js v14)
+- 🧠 **MongoDB persistence** (Mongoose) for queues, settings, stats
+- 🧩 **Modular architecture** for easy feature additions
+- 🐳 **Docker Compose** for local and VPS deployment
+- 🛡️ **Moderation + utility** commands included
 
-## 🧱 Installation (via Docker)
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/xianxdong/Lotoi.git
-cd Lotoi
-```
+## 🧰 Tech Stack
 
-2. **Copy and edit environment variables**
-```bash
+| Layer        | Technology                 |
+|--------------|----------------------------|
+| Language     | Node.js 18+                |
+| Discord API  | discord.js v14             |
+| Audio System | Lavalink + Moonlink        |
+| Database     | MongoDB + Mongoose         |
+| Deployment   | Docker Compose / VPS       |
+
+## ⚙️ Environment Variables
+
+~~~env
+DISCORD_TOKEN=
+DISCORD_CLIENT_ID=
+DISCORD_GUILD_ID=
+
+MONGODB_URI=
+MONGODB_NAME=
+DEPLOYMODE_MODE=dev # dev for development, production for production deployment. 
+You are required to make a mongodb database with MONGODB_NAME + "_" + DEPLOYMODE_MODE
+LAVALINK_HOST=
+LAVALINK_PORT=
+LAVALINK_PASSWORD=
+YTCIPHER_PASSWORD=
+YOUTUBE_REFRESH_TOKEN=
+MOONLINK_VERBOSE=0
+~~~
+
+Copy `.env.example` → `.env` and fill in your values.  
+**Tip:** No spaces around `=` (use `KEY=value`).
+
+
+
+## 🧱 Installation & Deployment (Docker Compose)
+
+Note: Ensure docker compose has been installed. If you are on windows installed docker desktop and ensure docker composed is installed and running. 
+
+1) **Clone**
+~~~bash
+git clone https://github.com/xianxdong/Discord-Bot.git
+cd discord-bot
+~~~
+
+2) **Configure**
+~~~bash
 cp .env.example .env
-```
-Then open `.env` and fill in your credentials:
-```env
-DISCORD_TOKEN=your-discord-bot-token
-CLIENT_ID=your-bot-client-id
-GUILD_ID=your-server-id
-MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/database
-NODE_ENV=dev # Switch to production if needed
-YTDLP_PATH=path/to/ytdlp # OPTIONAL. Only use if your system can't automatically find the path
-COOKIE_FILE=path/to/cookie/file # OPTIONAL. Only use if needed
-```
+# edit .env with your tokens, Lavalink credentials, and MongoDB URI
+~~~
 
-3. **Build and run the container**
-```bash
-docker build -t lotoi .
-docker run -d --name lotoi --env-file .env lotoi
-```
-⚠️**Notes:** Make sure Docker is properly installed. Also make sure Docker Desktop is also installed
+3) **Up**
+~~~bash
+docker compose up -d
+# follow logs
+docker compose logs -f
+~~~
+
+
+## 🧩 `docker-compose.yml` Example
+
+> Place this at the repo root as `docker-compose.yml`.  
+> It starts **Lavalink** and the **bot**; adjust image / build context to your setup.
+> I already included a docker-compose.yml file but you can adjust the settings yourself. Below is an simple example edit. 
+
+~~~yaml
+version: "3.9"
+
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=2333
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD}
+    ports:
+      - "2333:2333"
+    # Optional: mount application.yml if you want custom sources/config
+    # volumes:
+    #   - ./lavalink/application.yml:/opt/Lavalink/application.yml
+
+  bot:
+    build: .
+    container_name: discord-bot
+    restart: unless-stopped
+    depends_on:
+      - lavalink
+    env_file:
+      - .env
+    # If your bot reads host/port from env, LAN access works out-of-the-box
+    # networks can be customized if needed
+~~~
+
 
 ## 🧠 Notes
-- Uses **yt-dlp** and **FFmpeg** inside the container for reliable audio extraction/transcoding.
-- Connects to **MongoDB** via **Mongoose** for persistence (queues, history, settings).
-- Docker-first: local runs and cloud deployments share the exact same environment.
-- For some sources, you may need a cookies file (`COOKIE_FILE`) to improve playback reliability.
+- Audio is fully handled by **Lavalink**; **Moonlink** is the Node client layer.
+- Use a hosted MongoDB (Atlas) or add a MongoDB service to Compose.
+- Structure is modular so you can add commands/features quickly.
 
-## 🧑‍💻 Author
 
-**Xian Dong**  
-- [GitHub](https://github.com/xianxdong)  
-- [LinkedIn](https://www.linkedin.com/in/xianxdong)
+## 📄 License
+MIT — see `LICENSE` for details.
 
-## ⚖️ License
-This project is licensed under the **MIT License**.  
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-![Node.js](https://img.shields.io/badge/Node.js-18+-green)
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)
 ![discord.js](https://img.shields.io/badge/discord.js-v14-blue)
-![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-brightgreen)
-![Docker](https://img.shields.io/badge/Docker-Ready-informational)
+![Lavalink](https://img.shields.io/badge/Audio-Lavalink-purple)
+![Docker Compose](https://img.shields.io/badge/Docker-Compose-informational)
