@@ -41,7 +41,7 @@ lavalink:
         useSeekGhosting: true
         playerUpdateInterval: 5
         youtubePlaylistLoadLimit: 6
-        youtubeSearchEnabled: false          # will work once plugin is installed
+        youtubeSearchEnabled: true          # will work once plugin is installed
         soundcloudSearchEnabled: true
         gc-warnings: true
         timeouts:
@@ -53,7 +53,7 @@ lavalink:
 plugins:
     youtube:
         enabled: true
-        allowSearch: false            # disallow ytsearch:/ytmsearch: (queries won't resolve yet)
+        allowSearch: true            # disallow ytsearch:/ytmsearch: (queries won't resolve yet)
         allowDirectVideoIds: true     # allow bare video IDs (e.g., dQw4w9WgXcQ)
         allowDirectPlaylistIds: true  # allow bare playlist IDs
         remoteCipher:

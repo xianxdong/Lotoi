@@ -10,15 +10,15 @@ module.exports = {
         .setDescription("Plays music in a voice channel")
         .addStringOption(option =>
             option
-                .setName("url")
-                .setDescription("Paste in the youtube music URL")
+                .setName("query")
+                .setDescription("Paste in the youtube music URL or name of the song")
                 .setRequired(true)
         ),
 
     async execute(interaction){
         const botInfo = interaction.guild.members.me ?? await interaction.guild.members.fetch(process.env.DISCORD_CLIENT_ID);
 
-        const urlLink = interaction.options.getString("url");
+        const query = interaction.options.getString("query");
         const embed = new EmbedBuilder()
             .setTimestamp()
             .setColor(config.red)
@@ -91,7 +91,7 @@ module.exports = {
                 return;
             }
 
-            const musicSuccess = await queue.addSong(urlLink, interaction);
+            const musicSuccess = await queue.addSong(query, interaction);
 
             if (!musicSuccess){
                 embed.setFields({ name: "", value: "Invalid link provided." });

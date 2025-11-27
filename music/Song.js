@@ -1,10 +1,11 @@
 const { formatDuration } = require("./AudioLengthFormatHelper");
 
 class Song {
-    constructor(songUrl, interaction) {
-        this.songUrl = songUrl;
+    constructor(query, interaction) {
+        this.query = query;
         this.interaction = interaction;
         this.requestedBy = this.interaction.user.username;
+        this.songUrl = "";
 
         this.title = "";
         this.thumbnail = "";
@@ -18,7 +19,7 @@ class Song {
             const manager = this.interaction.client.manager;
 
             const results = await manager.search({
-                query: this.songUrl,
+                query: this.query,
                 source: "youtube",
                 requester: this.requestedBy
             });
@@ -32,6 +33,7 @@ class Song {
             this.results = results;
             this.track = track;
 
+            this.songUrl = track.url || "";
             this.title = track.title || "(untitled)";
             this.thumbnail = track.artworkUrl || "";
             // Moonlink durations are milliseconds
@@ -39,7 +41,7 @@ class Song {
 
             return true; // success
         } catch (error) {
-            console.log("Error when processing link:", error?.message || error);
+            console.log("Error when processing query:", error?.message || error);
             return false;
         };
     };
