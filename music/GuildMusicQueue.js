@@ -326,7 +326,7 @@ class MusicQueue {
                             value: `[${this.currentSong.title}](${this.currentSong.songUrl}) **-** \`[${this.currentSong.duration}]\``
                         })
                         .setThumbnail(this.currentSong.thumbnail || null)
-                        .setAuthor({ name: "MUSIC PANEL", iconURL: this.interaction.user.avatarURL() });
+                        .setAuthor({ name: "MUSIC PANEL", iconURL: this.currentSong.interaction.user.avatarURL() });
 
                     (async () => {
                         try {
