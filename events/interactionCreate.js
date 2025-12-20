@@ -15,6 +15,7 @@ module.exports = {
 
 		if (process.env.DEPLOYMODE_MODE === "dev" && interaction.guild.id !== process.env.DISCORD_GUILD_ID) return;
 		if (process.env.DEPLOYMODE_MODE !== "dev" && interaction.guild.id === process.env.DISCORD_GUILD_ID) return;
+		if (!interaction.guild) return; 
 
 
 		try {
