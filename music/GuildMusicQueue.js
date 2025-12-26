@@ -9,7 +9,7 @@
  *   the actual audio queueing/streaming to Moonlink's player/queue.
  * - Attaches one set of manager-level event listeners (trackStart/trackEnd/queueEnd/etc.)
  *   and ensures they are detached on teardown to avoid duplicate handlers.
- * - Produces/maintains a "Now Playing" embed (isPlayingMessage) and cleans it up across
+ * - Produces/maintains a "Now Playing" embed and cleans it up across
  *   all end/stop/disconnect paths.
  * - Applies a small suppression window for queueEnd caused by manual stop(), but not skip().
  *
@@ -19,12 +19,13 @@
  * - This class respects repeatSong at a simple, single-track level (re-enqueue current).
  */
 
-const { EmbedBuilder } = require("discord.js");
-const config = require("../config");
 const Song = require("./Song");
 const ms = require("ms");
 const queueManager = require("../music/queueManager");
 const { ensureMoonlinkConnection } = require("./ensureMoonlinkConnection");
+const QueueState = require("./domain/QueueState");
+const PlayerEvents = require("./services/PlayerEvents");
+const NowPlayingPanel = require("./ui/NowPlayingPanel");
 
 class MusicQueue {
     /**
@@ -40,19 +41,25 @@ class MusicQueue {
         this.player = this.manager.players.get(guildId) || null;
 
         // Local mirror for UX and embeds (Moonlink handles the real playback queue)
-        this.songList = [];      // Array<Song>
-        this.currentSong = null; // Song | null
-        this.isPlaying = false;  // True when Moonlink is actively playing a track
+        this.queueState = new QueueState();
 
         // Idle-eject timer (cleared on new playback)
         this.idleTime = null;
         this.channel = this.interaction.channel; // Text channel for embeds/notifications
-        this.repeatSong = false;                 // Simple repeat of the current song
-        this.isPlayingMessage = null;            // Message for the "MUSIC PANEL" embed
+        this.nowPlayingPanel = new NowPlayingPanel({ channel: this.channel });
 
         // Listener bookkeeping to avoid duplicate manager.on(...) registrations
-        this._listenersAttached = false;
-        this._handlers = null;
+        this.playerEvents = new PlayerEvents({
+            manager: this.manager,
+            guildId: this.guildId,
+            callbacks: {
+                trackStart: (player, track) => this._handleTrackStart(player, track),
+                trackEnd: (player, track, payload) => this._handleTrackEnd(player, track, payload),
+                queueEnd: (player) => this._handleQueueEnd(player),
+                playerDisconnected: (player) => this._handlePlayerDisconnected(player),
+                playerDestroyed: (player) => this._handlePlayerDestroyed(player)
+            }
+        });
 
         // Suppress spurious queueEnd only for manual stop (not for skip)
         // This mitigates false-positive queueEnd that can emit during manual teardown.
@@ -60,7 +67,7 @@ class MusicQueue {
         this._suppressClearTimer = null;
 
         if (this.player) {
-            this._attachPlayerListeners();
+            this.playerEvents.attach();
         }
     }
 
@@ -68,14 +75,14 @@ class MusicQueue {
      * @returns {Song|null} The current song (local mirror), or null if none
      */
     getCurrentSong() {
-        return this.currentSong;
+        return this.queueState.currentSong;
     }
 
     /**
      * @returns {Song[]} An array (copy) of pending songs in the local mirror
      */
     getSongList() {
-        return this.songList;
+        return this.queueState.songList;
     }
 
     /**
@@ -86,8 +93,8 @@ class MusicQueue {
      */
     async ensureConnection({ voiceChannelId, textChannelId, setDeaf = true, botMember = null } = {}) {
         // If we already have a player instance, ensure we have listeners and return.
-        if (this.player && !this._listenersAttached) {
-            this._attachPlayerListeners();
+        if (this.player && !this.playerEvents.attached) {
+            this.playerEvents.attach();
             return this.player;
         }
 
@@ -104,11 +111,11 @@ class MusicQueue {
 
         // If we replaced the underlying player instance, detach old listeners first
         if (this.player && this.player !== result.player) {
-            this._detachPlayerListeners();
+            this.playerEvents.detach();
         }
 
         this.player = result.player;
-        this._attachPlayerListeners();
+        this.playerEvents.attach();
         return this.player;
     }
 
@@ -151,7 +158,7 @@ class MusicQueue {
         if (!loadSuccess) return false;
 
         // Track order for UX: maintain a local mirror list
-        this.songList.push(song);
+        this.queueState.songList.push(song);
 
         // Enqueue into Moonlink (Song helper pushes the resolved track into player.queue)
         await song.createAudioResource(this.player);
@@ -178,9 +185,7 @@ class MusicQueue {
             this._setQueueEndSuppression();
 
             // Clear local state
-            this.songList = [];
-            this.currentSong = null;
-            this.isPlaying = false;
+            this.queueState.resetPlaybackState();
 
             if (this.idleTime) {
                 clearTimeout(this.idleTime);
@@ -188,10 +193,10 @@ class MusicQueue {
             }
 
             // Delete the playing panel if present
-            await this._deleteIsPlayingMessage();
+            await this.nowPlayingPanel.clear();
 
             // Detach listeners first to prevent ghost handlers
-            this._detachPlayerListeners();
+            this.playerEvents.detach();
 
             // Tear down the Moonlink player
             if (this.player) {
@@ -240,21 +245,6 @@ class MusicQueue {
     }
 
     /**
-     * Safely delete the current "Now Playing" message and clear the reference.
-     * Clears the property first to avoid races with multiple delete attempts.
-     */
-    async _deleteIsPlayingMessage() {
-        const msg = this.isPlayingMessage;
-        this.isPlayingMessage = null; // clear first to avoid races
-        if (!msg) return;
-        try {
-            // If deletable is exposed and false, respect it, but still guard with try/catch.
-            if (typeof msg.deletable === "boolean" && !msg.deletable) return;
-            await msg.delete().catch(() => {});
-        } catch {}
-    }
-
-    /**
      * Clear the queueEnd suppression flag and its timer (if any).
      * Called on trackStart or when the suppression window elapses.
      */
@@ -288,166 +278,106 @@ class MusicQueue {
      *  - queueEnd:  handle genuine end-of-queue; schedule idle teardown; suppress on stop.
      *  - playerDisconnected/playerDestroyed: clean up panel and internal state.
      */
-    _attachPlayerListeners() {
-        if (this._listenersAttached || !this.player) return;
+    _handleTrackStart(player, track) {
+        // Cancel any pending idle timeout when playing resumes
+        if (this.idleTime) {
+            clearTimeout(this.idleTime);
+            this.idleTime = null;
+        }
 
-        // Bind once per instance
-        this._handlers = {
-            trackStart: (player, track) => {
-                if (player.guildId !== this.guildId) return;
+        // New track started; any manual suppression can end now
+        this._clearQueueEndSuppression();
 
-                // Cancel any pending idle timeout when playing resumes
-                if (this.idleTime) {
-                    clearTimeout(this.idleTime);
-                    this.idleTime = null;
-                }
-
-                // New track started; any manual suppression can end now
-                this._clearQueueEndSuppression();
-
-                // Advance local mirror exactly once per start (unless repeating)
-                if (!this.repeatSong) {
-                    if (this.songList.length > 0) {
-                        this.currentSong = this.songList.shift();
-                    } else {
-                        // If queue was manipulated externally, keep current as-is
-                        this.currentSong = this.currentSong || null;
-                    }
-                }
-                this.isPlaying = true;
-
-                // Post/update the "MUSIC PANEL" embed
-                if (this.currentSong) {
-                    const embed = new EmbedBuilder()
-                        .setColor(config.blurple || "#7bb1f5")
-                        .setTimestamp()
-                        .setFields({
-                            name: "",
-                            value: `[${this.currentSong.title}](${this.currentSong.songUrl}) **-** \`[${this.currentSong.duration}]\``
-                        })
-                        .setThumbnail(this.currentSong.thumbnail || null)
-                        .setAuthor({ name: "MUSIC PANEL", iconURL: this.currentSong.interaction.user.avatarURL() });
-
-                    (async () => {
-                        try {
-                            await this._deleteIsPlayingMessage();
-                            this.isPlayingMessage = await this.channel.send({ embeds: [embed] });
-                        } catch {
-                            // ignore: likely missing perms
-                        }
-                    })();
-                }
-            },
-
-            trackEnd: (player, track, payload) => {
-                if (player.guildId !== this.guildId) return;
-
-                // If repeat mode: re-enqueue the currentSong's track to loop
-                if (this.repeatSong && this.currentSong?.track) {
-                    try {
-                        // Re-add the last current song back to the front
-                        this.currentSong.createAudioResource(this.player);
-                        this.songList.unshift(this.currentSong);
-                    } catch {}
-                }
-
-                // Delete panel on end of a track
-                void this._deleteIsPlayingMessage();
-
-                this.isPlaying = false;
-            },
-
-            queueEnd: (player) => {
-                if (player.guildId !== this.guildId) return;
-
-                // Ignore queueEnd bursts caused by manual stop (suppression not applied to skip)
-                if (this._suppressQueueEnd) {
-                    this._clearQueueEndSuppression();
-                    return;
-                }
-
-                // Guard against spurious queueEnd on races (e.g., stop before next starts)
-                const queueSize =
-                    (player.queue?.size ?? player.queue?.length ?? player.queue?.tracks?.length ?? 0);
-                if (queueSize > 0 || player.playing) {
-                    return; // there is still something queued/playing; ignore false-positive
-                }
-
-                this.isPlaying = false;
-                this.currentSong = null;
-
-                // Delete panel when the queue actually ends
-                void this._deleteIsPlayingMessage();
-
-                (async () => {
-                    try {
-                        if (this.channel) {
-                            await this.channel.send("The queue has ended. Add more songs to continue.");
-                        }
-                    } catch {}
-                })();
-
-                // Only schedule ONE idle timeout per queue instance
-                if (!this.idleTime) {
-                    this.idleTime = setTimeout(async () => {
-                        try {
-                            if (this.channel) {
-                                await this.channel.send("Leaving the voice channel due to inactivity.");
-                            }
-                        } catch {}
-
-                        // Teardown queue and remove from manager on idle
-                        await this.stop();              // detaches listeners and deletes message
-                        try { queueManager.delete(this.guildId); } catch {}
-                        this.idleTime = null;
-                    }, ms("5m"));
-                }
-            },
-
-            playerDisconnected: (player) => {
-                if (player.guildId !== this.guildId) return;
-                this.isPlaying = false;
-                // Delete panel on disconnect
-                void this._deleteIsPlayingMessage();
-            },
-
-            playerDestroyed: (player) => {
-                if (player.guildId !== this.guildId) return;
-                this.isPlaying = false;
-                // Delete panel and detach to prevent ghost handlers persisting after destroy
-                void this._deleteIsPlayingMessage();
-                this._detachPlayerListeners();
-                this.player = null;
+        // Advance local mirror exactly once per start (unless repeating)
+        if (!this.queueState.repeatSong) {
+            if (this.queueState.songList.length > 0) {
+                this.queueState.currentSong = this.queueState.songList.shift();
+            } else {
+                // If queue was manipulated externally, keep current as-is
+                this.queueState.currentSong = this.queueState.currentSong || null;
             }
-        };
+        }
+        this.queueState.isPlaying = true;
 
-        // Attach to manager-level events (Moonlink emits these on the manager)
-        this.manager.on("trackStart", this._handlers.trackStart);
-        this.manager.on("trackEnd", this._handlers.trackEnd);
-        this.manager.on("queueEnd", this._handlers.queueEnd);
-        this.manager.on("playerDisconnected", this._handlers.playerDisconnected);
-        this.manager.on("playerDestroyed", this._handlers.playerDestroyed);
-
-        this._listenersAttached = true;
+        // Post/update the "MUSIC PANEL" embed
+        if (this.queueState.currentSong) {
+            void this.nowPlayingPanel.show(this.queueState.currentSong);
+        }
     }
 
-    /**
-     * Detach manager-level listeners if attached, and clear handler refs.
-     * Safe to call multiple times.
-     */
-    _detachPlayerListeners() {
-        if (!this._listenersAttached || !this._handlers) return;
+    _handleTrackEnd(player, track, payload) {
+        // If repeat mode: re-enqueue the currentSong's track to loop
+        if (this.queueState.repeatSong && this.queueState.currentSong?.track) {
+            try {
+                // Re-add the last current song back to the front
+                this.queueState.currentSong.createAudioResource(this.player);
+                this.queueState.songList.unshift(this.queueState.currentSong);
+            } catch {}
+        }
 
-        try {
-            this.manager.off("trackStart", this._handlers.trackStart);
-            this.manager.off("trackEnd", this._handlers.trackEnd);
-            this.manager.off("queueEnd", this._handlers.queueEnd);
-            this.manager.off("playerDisconnected", this._handlers.playerDisconnected);
-            this.manager.off("playerDestroyed", this._handlers.playerDestroyed);
-        } catch {}
+        // Delete panel on end of a track
+        void this.nowPlayingPanel.clear();
 
-        this._listenersAttached = false;
-        this._handlers = null;
+        this.queueState.isPlaying = false;
+    }
+
+    _handleQueueEnd(player) {
+        // Ignore queueEnd bursts caused by manual stop (suppression not applied to skip)
+        if (this._suppressQueueEnd) {
+            this._clearQueueEndSuppression();
+            return;
+        }
+
+        // Guard against spurious queueEnd on races (e.g., stop before next starts)
+        const queueSize =
+            (player.queue?.size ?? player.queue?.length ?? player.queue?.tracks?.length ?? 0);
+        if (queueSize > 0 || player.playing) {
+            return; // there is still something queued/playing; ignore false-positive
+        }
+
+        this.queueState.isPlaying = false;
+        this.queueState.currentSong = null;
+
+        // Delete panel when the queue actually ends
+        void this.nowPlayingPanel.clear();
+
+        (async () => {
+            try {
+                if (this.channel) {
+                    await this.channel.send("The queue has ended. Add more songs to continue.");
+                }
+            } catch {}
+        })();
+
+        // Only schedule ONE idle timeout per queue instance
+        if (!this.idleTime) {
+            this.idleTime = setTimeout(async () => {
+                try {
+                    if (this.channel) {
+                        await this.channel.send("Leaving the voice channel due to inactivity.");
+                    }
+                } catch {}
+
+                // Teardown queue and remove from manager on idle
+                await this.stop();              // detaches listeners and deletes message
+                try { queueManager.delete(this.guildId); } catch {}
+                this.idleTime = null;
+            }, ms("5m"));
+        }
+    }
+
+    _handlePlayerDisconnected(player) {
+        this.queueState.isPlaying = false;
+        // Delete panel on disconnect
+        void this.nowPlayingPanel.clear();
+    }
+
+    _handlePlayerDestroyed(player) {
+        this.queueState.isPlaying = false;
+        // Delete panel and detach to prevent ghost handlers persisting after destroy
+        void this.nowPlayingPanel.clear();
+        this.playerEvents.detach();
+        this.player = null;
     }
 }
 
